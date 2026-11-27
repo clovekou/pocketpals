@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 17,
+  contentVersion: 18,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -470,7 +470,7 @@ PP.SCHEMA = {
         { id: 'willowbank-path', name: 'Willowbank Path', region: 'lumera', environment: 'grassland', enabled: true, description: 'Willow trees line this flowery route west of Brookhaven.', unlockLevel: 1, reqAreas: [], reqStep: 'c2-willowbank', energyCost: 8, coinsMin: 12, coinsMax: 35, gemChance: 5, gemAmount: 1, itemChance: 25, dropItem: 'random', exp: 12, encounterChance: 50 },
         { id: 'mossglow-woods', name: 'Mossglow Woods', region: 'lumera', environment: 'forest', enabled: true, description: 'A dim forest where glowing moss lights the way. Bug Pokémon everywhere.', unlockLevel: 1, reqAreas: [], reqStep: 'c3-mossglow', energyCost: 10, coinsMin: 15, coinsMax: 45, gemChance: 6, gemAmount: 2, itemChance: 25, dropItem: 'random', exp: 16, encounterChance: 60 },
         { id: 'bloomhaven', name: 'Bloomhaven City', region: 'lumera', environment: 'town', enabled: true, description: 'The city of gardens, home of the first Gym.', unlockLevel: 1, reqAreas: [], reqStep: 'c3-bloomhaven', energyCost: 3, coinsMin: 20, coinsMax: 50, gemChance: 5, gemAmount: 2, itemChance: 30, dropItem: 'random', exp: 10, encounterChance: 0 },
-      ],
+      ].concat((PP.LUMERA || {}).areas || []),
     },
 
     encounterTables: {
@@ -489,7 +489,7 @@ PP.SCHEMA = {
         { id: 'fernway-walk', name: 'Fernway Trail: grass', location: 'fernway-trail', method: 'walking', enabled: true, note: 'Custom table (game design)' },
         { id: 'willowbank-walk', name: 'Willowbank Path: grass', location: 'willowbank-path', method: 'walking', enabled: true, note: 'Custom table (game design)' },
         { id: 'mossglow-walk', name: 'Mossglow Woods: forest floor', location: 'mossglow-woods', method: 'walking', enabled: true, note: 'Custom table (game design)' },
-      ],
+      ].concat((PP.LUMERA || {}).tables || []),
     },
 
     encounters: {
@@ -513,7 +513,7 @@ PP.SCHEMA = {
         ['mossglow-walk', 'caterpie', 25, 3, 5, 'common'], ['mossglow-walk', 'weedle', 25, 3, 5, 'common'], ['mossglow-walk', 'metapod', 12, 4, 6, 'uncommon'],
         ['mossglow-walk', 'kakuna', 12, 4, 6, 'uncommon'], ['mossglow-walk', 'paras', 11, 4, 7, 'uncommon'], ['mossglow-walk', 'oddish', 10, 4, 7, 'uncommon'],
         ['mossglow-walk', 'pikachu', 5, 4, 7, 'rare'],
-      ].map(([table, species, weight, minLevel, maxLevel, rarity]) => ({ id: `${table}-${species}`, table, species, weight, minLevel, maxLevel, rarity })),
+      ].concat((PP.LUMERA || {}).encounters || []).map(([table, species, weight, minLevel, maxLevel, rarity]) => ({ id: `${table}-${species}`, table, species, weight, minLevel, maxLevel, rarity })),
     },
 
     chapters: {

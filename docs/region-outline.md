@@ -1,7 +1,7 @@
-# Lumera Region: outline (draft for approval)
+# Lumera Region: outline
 
-An original region for Pocket Pals v2. Same shape as a classic adventure (16 chapters, 8 gyms, Elite Four,
-post-game), with original places and characters. Creatures are the Pokémon in `assets/Pokemon Sprites/`.
+An original region for Pocket Pals v2. Same shape as a classic adventure (18 chapters, 8 gyms, Summit Four,
+Champion, post-game), with original places and characters. Creatures are the Pokémon in `assets/Pokemon Sprites/`.
 Encounter tables are **custom game-design tables**, not official data. Every place, person and number
 here becomes admin-editable content.
 
@@ -32,13 +32,16 @@ here becomes admin-editable content.
 | 14 | The Last Badge | Stormspire Station (Zapdos), Ironvale City, Ironvale Gym (Thorne) | 50 |
 | 15 | The Summit Road | Gatekeeper Road, Trial Ridge, Cinder Peak (Moltres) | 55 |
 | 16 | Champion of Lumera | Summit Sanctum (Summit Four, Champion Kai) | 60 |
-| Post | After the Summit | Hollow Deep (Mewtwo), rematches, shiny hunting, Pokédex completion | n/a |
+| 17 | After the Summit | Hollow Gate, Hollow Deep (Snorlax, rival rematch) | 62 |
+| 18 | The Lumera Legend | Hollow Core (final rival battle, Mewtwo, the Mew rumour) | 70 |
 
 ## Field abilities and key items (unlock places)
 Trailblade (cut paths), Lantern (dark tunnels), Tidecraft (surf), Boulder Gloves (strength),
 Wake Bell (wakes sleeping Pokémon blocking a road), Truth Lens (see ghosts), Ferry Pass, Prism Keycard,
 Manor Key, Helix Fossil, Dome Fossil.
 
-## In the game after Phase 1
-Chapters 1–3 places (Hearthmoor Village → Bloomhaven City) with custom encounter tables. The quest chains,
-gyms, trainers and the remaining chapters arrive in phases 2–4.
+## In the game
+All 18 chapters are playable: 43 areas with custom encounter tables, 9 rival battles, 8 Gym Leaders, Team Eclipse
+(grunts, Admin Lyra, Director Vex), the Summit Four and Champion Kai, and the legendary birds and Mewtwo as set
+encounters. Content lives in `js/content-lumera.js` and is editable in the admin (Chapters, Areas, Encounter tables,
+Trainers, Story steps).
