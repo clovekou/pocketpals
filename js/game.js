@@ -537,7 +537,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
   }
   function setPartner(uid) {
     const e = save.box.find(x => x.uid === uid); if (!e || uid === save.partner) return;
-    save.partner = uid; P.x = P.tx = 0.5; P.act = null;
+    save.partner = uid; save.team = [uid].concat(save.team.filter(u => u !== uid)).slice(0, data.settings.teamMax);   // the partner is the main Pokémon P.x = P.tx = 0.5; P.act = null;
     PP.Sprite.preload(speciesOf(e.species).folder);
     S.log('pokemon', `${labelOf(e)} is now the partner on the home screen`);
     commit(); toast(`${labelOf(e)} is your partner now`); { const ps = speciesOf(e.species); if (ps) PP.Audio.cry(ps.folder); }
@@ -1219,35 +1219,44 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     palsBox() {
       const e = partnerEntry(), sp = petSpecies();
       if (!e || !sp) return { title: data.settings.tabPals, body: empty('pokeball', `No ${data.settings.tabPals} yet`, 'Choose your first partner to get started.') };
-      const pic = PP.Sprite.portrait(sp.folder);
-      const days = Math.max(1, Math.ceil((Date.now() - e.since) / 86400000));
-      const icon = (avatarSpecies() || {}).id;
-      const boxRows = save.box.map(b => {
-        const bs = speciesOf(b.species); if (!bs) return '';
-        const bp = PP.Sprite.portrait(bs.folder), isPartner = b.uid === save.partner;
-        return `<div class="row">
-          <span class="row-ic has-pic">${bp ? `<img class="pix" src="${bp}" alt="">` : I('pokeball')}</span>
-          <div class="row-main"><div class="row-title">${esc(labelOf(b))}${isPartner ? ' <span class="qty">Partner</span>' : ''}${icon === bs.id ? ' <span class="qty">Icon</span>' : ''}</div>
-            <div class="row-sub">Lv ${b.level} · ${b.nickname ? esc(bs.name) + ' · ' : ''}#${String(bs.dex).padStart(3, '0')} · HP ${Math.floor(hpOf(b))}/${maxHp(b)}</div>
-            <div class="bar" style="--c:${hpOf(b) / maxHp(b) > .5 ? 'var(--good)' : hpOf(b) / maxHp(b) > .2 ? 'var(--gold)' : 'var(--bad)'}"><i style="width:${hpOf(b) / maxHp(b) * 100}%"></i></div></div>
-          <div class="row-side">
-            ${save.team.includes(b.uid) ? `<button class="btn btn-sm btn-primary" data-do="team" data-id="${esc(b.uid)}" title="In your battle team. Tap to take it out.">Team ${save.team.indexOf(b.uid) + 1}</button>`
-              : `<button class="btn btn-sm" data-do="team" data-id="${esc(b.uid)}" ${save.team.length >= data.settings.teamMax ? 'disabled title="Team is full"' : ''}>+ Team</button>`}
-            ${isPartner ? '' : `<button class="btn btn-sm" data-do="partner" data-id="${esc(b.uid)}">Partner</button>`}
-            ${icon === bs.id ? '' : `<button class="btn btn-sm" data-do="avatar" data-id="${esc(bs.id)}">Use as icon</button>`}
-          </div></div>`;
+      const max = data.settings.teamMax, team = teamEntries(), icon = (avatarSpecies() || {}).id;
+      const pic = x => { const xs = speciesOf(x.species); const u = xs && PP.Sprite.portrait(xs.folder); return u ? `<img class="pix" src="${u}" alt="">` : I('pokeball'); };
+      const hpBar = x => { const r = hpOf(x) / maxHp(x); return `<span class="mini-hp"><i style="width:${r * 100}%;background:${r > .5 ? 'var(--good)' : r > .2 ? 'var(--gold)' : 'var(--bad)'}"></i></span>`; };
+      const main = team[0];
+      const picking = boxSlot != null;
+      const slots = [];
+      for (let k = 1; k < max; k++) {
+        const x = team[k];
+        slots.push(x ? `<div class="t-slot${boxSlot === k ? ' on' : ''}"><button class="t-slot-btn" data-do="slot" data-id="${k}" aria-label="Change backup ${k}">${pic(x)}<b>Lv ${x.level}</b>${hpBar(x)}</button>
+            <button class="t-slot-x" data-do="team-out" data-id="${k}" aria-label="Take ${esc(labelOf(x))} out of the team">${I('close')}</button></div>`
+          : `<div class="t-slot empty${boxSlot === k ? ' on' : ''}"><button class="t-slot-btn" data-do="slot" data-id="${k}" aria-label="Add a backup Pokémon">${I('plus')}<small>Backup</small></button></div>`);
+      }
+      const sorted = save.box.slice().sort((a, b) => boxSort === 'level' ? b.level - a.level || a.since - b.since
+        : boxSort === 'dex' ? (speciesOf(a.species) || {}).dex - (speciesOf(b.species) || {}).dex || b.level - a.level : b.since - a.since);
+      const cells = sorted.map(x => {
+        const xs = speciesOf(x.species); if (!xs) return '';
+        const ti = save.team.indexOf(x.uid);
+        return `<button class="box-cell${ti >= 0 ? ' in-team' : ''}${picking ? ' picking' : ''}" data-do="cell" data-id="${esc(x.uid)}" title="${esc(labelOf(x))} · Lv ${x.level}">
+          ${pic(x)}<span class="box-lv">Lv ${x.level}</span>${ti >= 0 ? `<span class="box-team">${ti === 0 ? '★' : ti + 1}</span>` : ''}${hpBar(x)}</button>`;
       }).join('');
+      const detail = boxDetail && save.box.find(x => x.uid === boxDetail);
       return { title: data.settings.tabPals, body: `
-        <div class="pet-card">
-          <div class="pet-portrait">${pic ? `<img src="${pic}" alt="">` : I('pokeball')}</div>
-          <div><div class="pet-name">${esc(petLabel())}</div>
-            <div class="row-sub">Partner · Lv ${e.level} · ${e.nickname ? esc(sp.name) + ' · ' : ''}#${String(sp.dex).padStart(3, '0')} · together ${days} day${days === 1 ? '' : 's'}</div>
-            <div class="bar pet-exp" title="EXP to the next level"><i style="width:${e.level >= 100 ? 100 : Math.round((e.exp - S.expForLevel(sp.growth, e.level)) / Math.max(1, S.expForLevel(sp.growth, e.level + 1) - S.expForLevel(sp.growth, e.level)) * 100)}%"></i></div></div>
+        <div class="sec-label">Your team · ${team.length}/${max}</div>
+        <div class="team-main${boxSlot === 0 ? ' on' : ''}">
+          <button class="team-main-btn" data-do="slot" data-id="0" aria-label="Change your main Pokémon">
+            <span class="team-main-pic">${pic(main)}</span>
+            <span class="team-main-info"><small>Main · leads battles and lives on your home screen</small><b>${esc(labelOf(main))}</b>
+              <span>Lv ${main.level} · HP ${Math.floor(hpOf(main))}/${maxHp(main)}</span>${hpBar(main)}</span>
+          </button>
+          <button class="btn btn-sm" data-do="cell" data-id="${esc(main.uid)}">Details</button>
         </div>
-        <div class="sec-label">Partner’s nickname</div>
-        <form class="field" data-form="petname"><input id="petNameInput" maxlength="16" placeholder="${esc(sp.name)}" value="${esc(e.nickname)}" autocomplete="off"><button class="btn btn-primary" type="submit">Save</button></form>
-        <div class="sec-label">PC box · ${save.box.length} · team ${save.team.length}/${data.settings.teamMax}</div>
-        ${boxRows}` };
+        <div class="t-slots">${slots.join('')}</div>
+        ${picking ? `<div class="pick-hint">${I('pokeball')}<span>Tap a Pokémon in your box to put it in ${boxSlot === 0 ? 'the Main slot' : `backup slot ${boxSlot}`}.</span><button class="btn btn-sm" data-do="slot-cancel">Cancel</button></div>` : ''}
+        <div class="box-head"><div class="sec-label" style="margin:0">PC box · ${save.box.length} Pokémon</div>
+          <div class="box-sort">${[['new', 'Newest'], ['level', 'Level'], ['dex', 'No.']].map(([k, l]) => `<button class="cat-tab${boxSort === k ? ' on' : ''}" data-do="box-sort" data-id="${k}">${l}</button>`).join('')}</div></div>
+        <div class="box-grid">${cells}</div>
+        <p class="muted" style="margin-top:10px">Tap or press and hold a Pokémon to see its level, stats and moves.</p>
+        ${detail ? boxDetailHTML(detail, icon) : ''}` };
     },
     starter() {
       const s = data.settings, list = data.pokemon.filter(p => p.starter && PP.Sprite.has(p.folder));
@@ -1536,6 +1545,57 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     b.textContent = n > 9 ? '9+' : n; b.hidden = !n;
   }
 
+  // ---------------- PC box: team slots and Pokémon details ----------------
+  let boxSlot = null, boxDetail = null, boxSort = 'new';
+  /** put a box Pokémon into team slot k (0 = Main); swaps with whoever was there */
+  function placeInSlot(uid, k) {
+    const e = save.box.find(x => x.uid === uid); if (!e) return;
+    const team = save.team.slice(), cur = team.indexOf(uid);
+    if (k < team.length) {
+      if (cur >= 0) { team[cur] = team[k]; team[k] = uid; }
+      else { const out = team[k]; team[k] = uid; if (k === 0 && team.length < data.settings.teamMax) team.push(out); }   // the old main stays in the team if there's room
+    } else if (cur < 0) { if (team.length >= data.settings.teamMax) return toast('Your team is full'); team.push(uid); }
+    else return;                                                     // already in the team
+    save.team = team.filter(Boolean);
+    const wasMain = save.partner; save.partner = save.team[0];
+    S.log('pokemon', k === 0 ? `${labelOf(e)} is now the main Pokémon` : `${labelOf(e)} is in backup slot ${Math.min(k, save.team.length - 1)}`);
+    if (save.partner !== wasMain) { P.x = P.tx = 0.5; P.act = null; const ms = speciesOf(e.species); if (ms) { PP.Sprite.preload(ms.folder); PP.Audio.cry(ms.folder); } }
+    boxSlot = null; commit();
+  }
+  function teamOut(k) {
+    if (k === 0) return toast('Your main Pokémon can’t be removed. Choose another main first.');
+    const uid = save.team[k], e = save.box.find(x => x.uid === uid); if (!e) return;
+    save.team = save.team.filter((_, i) => i !== k);
+    S.log('pokemon', `${labelOf(e)} went back to the PC box`); commit();
+  }
+  function boxDetailHTML(e, icon) {
+    const sp = speciesOf(e.species), m = PP.Battle.build(data, Object.assign({}, e)), ti = save.team.indexOf(e.uid);
+    const lo = S.expForLevel(sp.growth, e.level), hi = S.expForLevel(sp.growth, e.level + 1), expPct = e.level >= 100 ? 100 : Math.round((e.exp - lo) / Math.max(1, hi - lo) * 100);
+    const stat = (label, v, top) => `<div class="st-row"><span>${label}</span><b class="tnum">${v}</b><span class="st-bar"><i style="width:${Math.min(100, v / top * 100)}%"></i></span></div>`;
+    const top = Math.max(60, m.atk, m.def, m.spa, m.spd, m.spe) * 1.1;
+    const types = m.types.map(t => `<span class="type-chip" style="--c:${(PP.TYPES || {})[t] || '#888'}">${esc(t)}</span>`).join('');
+    const days = Math.max(1, Math.ceil((Date.now() - e.since) / 86400000));
+    return `<div class="box-detail" role="dialog" aria-label="${esc(labelOf(e))}">
+      <div class="bd-scrim" data-do="cell-close"></div>
+      <div class="bd-card">
+        <button class="icon-btn sm bd-close" data-do="cell-close" aria-label="Close">${I('close')}</button>
+        <div class="bd-head"><span class="bd-pic">${PP.Sprite.portrait(sp.folder) ? `<img class="pix" src="${PP.Sprite.portrait(sp.folder)}" alt="">` : I('pokeball')}</span>
+          <div><b>${esc(labelOf(e))}</b><span>${e.nickname ? esc(sp.name) + ' · ' : ''}#${String(sp.dex).padStart(3, '0')} · Lv ${e.level}</span><div class="bd-types">${types}</div></div></div>
+        <div class="bd-line"><span>EXP</span><span class="st-bar wide"><i style="width:${expPct}%;background:var(--accent)"></i></span><small>${expPct}%</small></div>
+        <div class="bd-line"><span>HP</span><span class="st-bar wide"><i style="width:${hpOf(e) / maxHp(e) * 100}%;background:var(--good)"></i></span><small class="tnum">${Math.floor(hpOf(e))}/${maxHp(e)}</small></div>
+        <div class="bd-stats">${stat('Attack', m.atk, top)}${stat('Defense', m.def, top)}${stat('Sp. Atk', m.spa, top)}${stat('Sp. Def', m.spd, top)}${stat('Speed', m.spe, top)}</div>
+        <div class="bd-moves">${m.moves.map(mv => `<span class="bd-move" style="--c:${(PP.TYPES || {})[mv.type] || '#888'}"><b>${esc(mv.name)}</b><small>${esc(mv.type)} · ${mv.power || '—'} power</small></span>`).join('')}</div>
+        <p class="muted" style="text-align:left;margin:8px 0 12px">${e.caughtAt ? `From ${esc(e.caughtAt)} · ` : ''}with you ${days} day${days === 1 ? '' : 's'}</p>
+        <form class="field" data-form="nick" data-uid="${esc(e.uid)}"><input id="nickInput" maxlength="16" placeholder="Nickname (${esc(sp.name)})" value="${esc(e.nickname)}" autocomplete="off"><button class="btn" type="submit">Save</button></form>
+        <div class="bd-actions">
+          ${ti === 0 ? '<span class="qty">Main Pokémon</span>' : `<button class="btn btn-primary btn-sm" data-do="make-main" data-id="${esc(e.uid)}">${I('star')}Make main</button>`}
+          ${ti > 0 ? `<button class="btn btn-sm" data-do="team-out" data-id="${ti}">Back to box</button>`
+            : ti < 0 ? `<button class="btn btn-sm" data-do="team-add" data-id="${esc(e.uid)}" ${save.team.length >= data.settings.teamMax ? 'disabled' : ''}>Add to team</button>` : ''}
+          ${icon === sp.id ? '<span class="qty">Profile icon</span>' : `<button class="btn btn-sm" data-do="avatar" data-id="${esc(sp.id)}">Use as icon</button>`}
+        </div>
+      </div></div>`;
+  }
+
   /** Explore → Story: the current chapter's checklist, what's next, and the badge case */
   function storyHTML() {
     const ch = PP.Story.currentChapter(data, save), cur = PP.Story.current(data, save);
@@ -1605,7 +1665,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     if (!sheetKind || !SHEETS[sheetKind]) return;
     const body = $('sheetBody'), scroll = body.scrollTop;
     const a = document.activeElement;
-    if (a && (a.id === 'nameInput' || a.id === 'petNameInput')) return;   // don't wipe what's being typed
+    if (a && (a.id === 'nameInput' || a.id === 'petNameInput' || a.id === 'nickInput')) return;   // don't wipe what's being typed
     if (sheetKind === 'party' && a && (a.id === 'chatInput' || a.id === 'friendSearch')) return;
     if (sheetKind === 'shop' && a && a.id === 'shopSearch' && $('shopGrid')) { refreshShop(); return; }
     const v = SHEETS[sheetKind]();
@@ -1634,6 +1694,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
 
   // ---------------- input ----------------
   document.addEventListener('click', e => {
+    if (Date.now() < ignoreClicksUntil) return;          // the release after a press-and-hold isn't a tap
     // the Professor's text box sits over everything: a tap moves the story on
     if (e.target.closest('#story')) {
       if (e.target.closest('[data-do="skip-tour"]')) finishTour();
@@ -1666,6 +1727,14 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       case 'act': { const a = data.actions.find(x => x.id === id); if (a) doAction(a); break; }
       case 'sheet': openSheet(b.dataset.kind); break;
       case 'close': closeSheet(); break;
+      case 'slot': boxSlot = boxSlot === +id ? null : +id; boxDetail = null; renderSheet(); break;
+      case 'slot-cancel': boxSlot = null; renderSheet(); break;
+      case 'cell': if (longPressed) { longPressed = false; break; } if (boxSlot != null) placeInSlot(id, boxSlot); else { boxDetail = id; renderSheet(); } break;
+      case 'cell-close': boxDetail = null; renderSheet(); break;
+      case 'box-sort': boxSort = id; renderSheet(); break;
+      case 'make-main': placeInSlot(id, 0); boxDetail = id; renderSheet(); break;
+      case 'team-add': placeInSlot(id, save.team.length); boxDetail = id; renderSheet(); break;
+      case 'team-out': teamOut(+id); renderSheet(); break;
       case 'walk-leave': if (walk && !walk.done && confirm('Head back now? You won’t get this trip’s rewards.')) { S.log('explore', `Left ${walk.l.name} early`); endWalk(true); } break;
       case 'walk-close': endWalk(true); break;
       case 'friend': friendView = id || null; tradePicking = false; if (!friendView) closeChat(); renderSheet(); $('sheetBody').scrollTop = 0; break;
@@ -1705,6 +1774,11 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         if (!why) $('nameInput').blur();
       });
     }
+    if (e.target.dataset.form === 'nick') {
+      e.preventDefault();
+      const x = save.box.find(b => b.uid === e.target.dataset.uid), v = String($('nickInput').value || '').trim().slice(0, 16);
+      if (x && v !== x.nickname) { S.log('pokemon', v ? `Nicknamed ${(speciesOf(x.species) || {}).name} “${v}”` : 'Removed a nickname'); x.nickname = v; $('nickInput').blur(); commit(); toast('Nickname saved'); }
+    }
     if (e.target.dataset.form === 'fsearch') { e.preventDefault(); runFriendSearch($('friendSearch').value); }
     if (e.target.dataset.form === 'chat') {
       e.preventDefault();
@@ -1721,6 +1795,16 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     if (e.key === 'Escape' && sheetKind) closeSheet();
     if ((e.key === 'Enter' || e.key === ' ') && e.target.id === 'questCard') { e.preventDefault(); openSheet('quests'); }
   });
+
+  // ---------------- PC box: press and hold a Pokémon for its details ----------------
+  let pressTimer = null, longPressed = false, ignoreClicksUntil = 0;
+  document.addEventListener('pointerdown', e => {
+    const c = e.target.closest('.box-cell'); if (!c) return;
+    clearTimeout(pressTimer); longPressed = false;
+    pressTimer = setTimeout(() => { longPressed = false; ignoreClicksUntil = Date.now() + 450; boxDetail = c.dataset.id; if (navigator.vibrate) navigator.vibrate(15); renderSheet(); }, 420);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => document.addEventListener(ev, () => clearTimeout(pressTimer), true));
+  document.addEventListener('contextmenu', e => { if (e.target.closest('.box-cell')) e.preventDefault(); });
 
   // ---------------- no zooming on phones ----------------
   // iOS Safari ignores the viewport's no-zoom setting, so double-taps and pinches are stopped here.
