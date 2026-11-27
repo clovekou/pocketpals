@@ -93,9 +93,12 @@ window.PP = window.PP || {};
   sdk.then(() => {
     firebase.initializeApp(CFG);
     auth = firebase.auth(); db = Cloud.db = firebase.firestore();
+    // stay signed in on this device until the player signs out (closing the game or restarting the phone keeps it)
+    if (auth.setPersistence && firebase.auth.Auth) auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
     let heard = false;
+    gate('busy', 'Welcome back…');
     auth.onAuthStateChanged(u => { heard = true; if (ready) return; if (u) start(u).catch(fail); else gate('signin'); });
-    setTimeout(() => { if (!heard && !auth.currentUser) gate('signin'); }, 4000);   // slow to restore a session: offer sign-in anyway
+    setTimeout(() => { if (!heard && !auth.currentUser) gate('signin'); }, 9000);   // only if restoring the sign-in takes very long
   }).catch(() => gate('error', 'Couldn’t reach the online service. Check your internet connection.'));
   function fail(e) { console.error(e); gate('error', e && e.code === 'unavailable' ? 'You seem to be offline. Check your internet connection.' : 'Couldn’t load your game. Try again.'); }
 

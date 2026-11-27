@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 16,
+  contentVersion: 17,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -53,7 +53,7 @@ PP.SCHEMA = {
     { v: 3, set: { homeBackground: 'green-meadow', tabPals: 'Pokemon', tabParty: 'Friends' } },
     { v: 5, set: { expGrowth: 1.06 } },
     { v: 13, set: { professorName: 'Professor Kou' } },
-    { v: 16, set: { cryFolder: 'https://veekun.com/dex/media/pokemon/cries/', cryNaming: 'number', cryFileType: 'ogg' } },
+    { v: 17, set: { cryFolder: 'https://veekun.com/dex/media/pokemon/cries/' } },      // cries rebuilt: sprite folder number → veekun .ogg
   ],
 
   // ---------- single-value settings, grouped into admin pages ----------
@@ -155,9 +155,7 @@ PP.SCHEMA = {
       { key: 'criesOn', label: 'Pokémon cries', type: 'bool', def: true, help: 'A Pokémon cries when it enters battle, and again (slower) when it faints.' },
       { key: 'cryVolume', label: 'Cry volume', type: 'int', min: 0, max: 150, def: 80, suffix: '%' },
       { key: 'cryFaintSpeed', label: 'Fainting cry speed', type: 'int', min: 40, max: 100, def: 80, suffix: '%', help: 'Lower is slower and deeper.' },
-      { key: 'cryFolder', label: 'Cry sound folder or web address', type: 'text', def: 'https://veekun.com/dex/media/pokemon/cries/', max: 200, help: 'Where the cry files are: a folder in the project (e.g. assets/Pokemon sound/) or a web address. Leave empty to use only the game’s own cries. Any Pokémon whose file is missing uses the game’s own cry.' },
-      { key: 'cryNaming', label: 'Cry files are named by', type: 'select', def: 'number', options: [['number', 'Pokédex number (25.ogg)'], ['id', 'Pokémon ID (pikachu.mp3)']] },
-      { key: 'cryFileType', label: 'Cry file type', type: 'select', def: 'ogg', options: [['ogg', '.ogg'], ['mp3', '.mp3'], ['wav', '.wav'], ['m4a', '.m4a']] },
+      { key: 'cryFolder', label: 'Cry source (web address or folder)', type: 'text', def: 'https://veekun.com/dex/media/pokemon/cries/', max: 200, help: 'Each Pokémon plays the .ogg file numbered like its sprite folder: 0001_Bulbasaur → 1.ogg, 0025_Pikachu → 25.ogg.' },
       { key: 'musicHome', label: 'Music: home screen', type: 'select', optionsFrom: 'musicOrNone', def: 'home-cozy' },
       { key: 'musicWild', label: 'Music: wild battles', type: 'select', optionsFrom: 'musicOrNone', def: 'battle-wild' },
       { key: 'musicTrainer', label: 'Music: trainer battles', type: 'select', optionsFrom: 'musicOrNone', def: 'battle-trainer', help: 'Trainers, rivals and villains.' },

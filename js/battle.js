@@ -42,7 +42,7 @@
   // used when every move is out of PP, so a battle can always go on
   const STRUGGLE = { id: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: 100, pp: 1, left: Infinity, priority: 0, drain: 0 };
   const sfx = n => { if (PP.Audio) PP.Audio.sfx(n); };
-  const cry = (m, slow) => PP.Audio && m ? PP.Audio.cry(m.id, slow, m.sp && m.sp.dex) : Promise.resolve();
+  const cry = (m, slow) => PP.Audio && m ? PP.Audio.cry(m.folder, slow) : Promise.resolve();   // by sprite folder number
   const TACKLE = { id: 'tackle', name: 'Tackle', type: 'normal', category: 'physical', power: 40, accuracy: 100, pp: 35, priority: 0, drain: 0 };
 
   /** the moves a species knows at a level: the last 4 it has reached in its learnset */

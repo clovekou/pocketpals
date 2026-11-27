@@ -83,7 +83,7 @@ window.PP = window.PP || {};
 
   // ---------------- engine ----------------
   let ctx = null, master, musicBus, sfxBus, noise = null;
-  let cfg = { sfxOn: true, musicOn: true, musicVol: .45, sfxVol: .7, tracks: {}, cries: true, cryVol: .8, cryDir: '', cryExt: 'ogg', cryNaming: 'number', crySlow: 80 };
+  let cfg = { sfxOn: true, musicOn: true, musicVol: .45, sfxVol: .7, tracks: {}, cries: true, cryVol: .8, cryDir: '', crySlow: 80 };
   let want = null;          // the track that should be playing
   let cur = null;           // { id, stop() }
   function ensure() {
@@ -308,19 +308,16 @@ window.PP = window.PP || {};
   };
 
   // ---------------- Pokémon cries ----------------
-  // A file in the cry folder (e.g. "assets/Pokemon sound/pikachu.mp3") is used when there is one; otherwise every
-  // species gets its own made-up cry (always the same for that species).
+  // Each Pokémon's cry is the file numbered like its sprite folder: "0001_Bulbasaur" → 1.ogg, "0025_Pikachu" → 25.ogg,
+  // played from the cry source (Game settings → Sound & music). A Pokémon whose file can't be played stays silent.
   const missing = new Set();           // cry files that failed once (not tried again this visit)
   let cryKey = '';
-  /** where a species' cry file is: the folder (a local folder or a web address) + its ID or Pokédex number */
-  function cryUrl(id, dex) {
-    if (!cfg.cryDir) return null;
-    const name = cfg.cryNaming === 'number' ? (dex ? String(dex) : null) : id;
-    if (!name) return null;
-    const dir = cfg.cryDir.endsWith('/') ? cfg.cryDir : cfg.cryDir + '/';
-    return (/^https?:/i.test(dir) ? dir : encodeURI(dir)) + name + '.' + cfg.cryExt;
+  /** the cry file for a sprite folder such as "0004_Charmander" (→ …/4.ogg) */
+  function cryUrl(folder) {
+    const n = parseInt(String(folder || ''), 10);
+    if (!cfg.cryDir || !(n > 0)) return null;
+    return (cfg.cryDir.endsWith('/') ? cfg.cryDir : cfg.cryDir + '/') + n + '.ogg';
   }
-  const canPlay = ext => { try { return !!new Audio().canPlayType({ ogg: 'audio/ogg; codecs="vorbis"', mp3: 'audio/mpeg', wav: 'audio/wav', m4a: 'audio/mp4' }[ext] || 'audio/' + ext); } catch (e) { return false; } };
   /** play a cry file with the browser's audio player (works for files on other sites too); resolves true if it played */
   function playFile(url, rate) {
     return new Promise(res => {
@@ -338,54 +335,13 @@ window.PP = window.PP || {};
     });
   }
   function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
-  /** a made-up cry: 2–3 chirps whose pitch, shape and length come from the species id */
-  function synthCry(id, t, rate, bus) {
-    let h = hash(id); const r = () => { h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; return h / 4294967296; };
-    const base = 260 + r() * 520, n = 2 + Math.floor(r() * 2), wave = ['square', 'sawtooth', 'triangle'][Math.floor(r() * 3)];
-    let at = t, total = 0;
-    for (let k = 0; k < n; k++) {
-      const len = (.09 + r() * .16) / rate, f0 = base * (.8 + r() * .6) * rate, f1 = f0 * (r() < .5 ? .55 + r() * .3 : 1.2 + r() * .5);
-      tone(bus, f0, at, len, { wave, slide: f1, vol: .16, attack: .01, release: .05, cutoff: 2600 });
-      tone(bus, f0 * 1.5, at, len, { wave: 'sine', slide: f1 * 1.5, vol: .06, attack: .01, release: .05 });
-      at += len + .03 / rate; total += len + .03 / rate;
-    }
-    hit(bus, t, { type: 'bandpass', freq: 1200 + r() * 2000, dur: .12 / rate, vol: .05 });
-    return total;
+  /** play the cry for a sprite folder; resolves when it has finished. slow = the fainting version (slower, deeper) */
+  async function cry(folder, slow) {
+    if (!cfg.cries || !sfxAllowed() || !ensure()) return;
+    const url = cryUrl(folder);
+    if (!url || missing.has(url)) return;
+    await playFile(url, slow ? Math.max(.5, cfg.crySlow / 100) : 1);
   }
-  /** play a species' cry; resolves when it has finished. slow = the fainting version */
-  async function cry(id, slow, dex) {
-    if (!cfg.cries || !sfxAllowed() || !ensure() || !id) return;
-    const rate = slow ? Math.max(.5, cfg.crySlow / 100) : 1;
-    const url = cryUrl(id, dex);
-    if (url && !missing.has(url) && canPlay(cfg.cryExt) && await playFile(url, rate)) return;
-    // no file (or this browser can't play it): the game's own cry for this species
-    const bus = ctx.createGain(); bus.gain.value = cfg.cryVol; bus.connect(sfxBus);
-    const secs = synthCry(id, ctx.currentTime + .02, rate, bus);
-    await new Promise(r => setTimeout(r, Math.min(4000, secs * 1000 + 80)));
-    setTimeout(() => bus.disconnect(), 500);
-  }
-
-  // ---------------- attack sounds, one flavour per type (played as the attacker lunges) ----------------
-  const MOVE = {
-    normal: t => hit(sfxBus, t, { type: 'bandpass', freq: 1800, dur: .18, vol: .35 }),
-    fire: t => { for (let k = 0; k < 6; k++) hit(sfxBus, t + k * .04, { type: 'bandpass', freq: 900 + k * 300, dur: .05, vol: .3 }); tone(sfxBus, 180, t, .3, { wave: 'sawtooth', slide: 520, vol: .1, cutoff: 1200 }); },
-    water: t => [0, .05, .11, .16, .22].forEach((d, k) => tone(sfxBus, 500 + ((k * 7) % 5) * 140, t + d, .07, { wave: 'sine', slide: 1300, vol: .16 })),
-    grass: t => { [0, .07, .14].forEach(d => hit(sfxBus, t + d, { type: 'highpass', freq: 3500, dur: .06, vol: .3 })); tone(sfxBus, 900, t + .05, .16, { wave: 'triangle', slide: 1500, vol: .1 }); },
-    electric: t => { for (let k = 0; k < 7; k++) tone(sfxBus, k % 2 ? 1800 : 900, t + k * .035, .035, { wave: 'square', vol: .1 }); hit(sfxBus, t, { type: 'highpass', freq: 4000, dur: .25, vol: .18 }); },
-    ice: t => [96, 100, 103, 108].forEach((m, k) => tone(sfxBus, hz(m), t + k * .045, .14, { wave: 'sine', vol: .09 })),
-    fighting: t => { hit(sfxBus, t, { type: 'bandpass', freq: 900, dur: .1, vol: .45 }); hit(sfxBus, t + .1, { type: 'bandpass', freq: 1200, dur: .1, vol: .45 }); },
-    poison: t => tone(sfxBus, 420, t, .3, { wave: 'square', slide: 150, vol: .1, cutoff: 900, vib: true }),
-    ground: t => hit(sfxBus, t, { type: 'lowpass', freq: 300, dur: .4, vol: .9 }),
-    flying: t => { hit(sfxBus, t, { type: 'bandpass', freq: 1200, dur: .14, vol: .3 }); hit(sfxBus, t + .12, { type: 'bandpass', freq: 2400, dur: .14, vol: .3 }); },
-    psychic: t => tone(sfxBus, 300, t, .35, { wave: 'sine', slide: 900, vol: .14, vib: true }),
-    bug: t => tone(sfxBus, 260, t, .28, { wave: 'sawtooth', slide: 320, vol: .08, cutoff: 1800, vib: true }),
-    rock: t => [0, .07, .14].forEach(d => hit(sfxBus, t + d, { type: 'lowpass', freq: 600, dur: .08, vol: .6 })),
-    ghost: t => tone(sfxBus, 700, t, .4, { wave: 'sine', slide: 220, vol: .14, vib: true }),
-    dragon: t => tone(sfxBus, 110, t, .35, { wave: 'sawtooth', slide: 70, vol: .14, cutoff: 900 }),
-    dark: t => hit(sfxBus, t, { type: 'bandpass', freq: 700, dur: .22, vol: .4 }),
-    steel: t => { tone(sfxBus, 2100, t, .2, { wave: 'square', vol: .07, cutoff: 5000 }); tone(sfxBus, 3150, t, .2, { wave: 'sine', vol: .06 }); hit(sfxBus, t, { type: 'highpass', freq: 6000, dur: .05, vol: .3 }); },
-    fairy: t => [88, 91, 95, 100].forEach((m, k) => tone(sfxBus, hz(m), t + k * .05, .16, { wave: 'sine', vol: .08 })),
-  };
 
   // ---------------- dialogue blips (a soft "pip" as the letters appear) ----------------
   let lastBlip = 0;
@@ -412,9 +368,9 @@ window.PP = window.PP || {};
       const s = d.settings;
       cfg = { sfxOn: s.soundOn, musicOn: s.musicOn, musicVol: s.musicVolume / 100, sfxVol: s.sfxVolume / 100,
         tracks: Object.fromEntries((d.music || []).filter(t => t.enabled).map(t => [t.id, t])),
-        cries: s.criesOn, cryVol: s.cryVolume / 100, cryDir: s.cryFolder.trim(), cryExt: s.cryFileType, cryNaming: s.cryNaming, crySlow: s.cryFaintSpeed,
+        cries: s.criesOn, cryVol: s.cryVolume / 100, cryDir: s.cryFolder.trim(), crySlow: s.cryFaintSpeed,
         textOn: s.textSoundOn, textPitch: s.textSoundPitch, textVol: s.textSoundVolume / 100 };
-      if (cryKey !== cfg.cryDir + cfg.cryExt + cfg.cryNaming) { cryKey = cfg.cryDir + cfg.cryExt + cfg.cryNaming; missing.clear(); }
+      if (cryKey !== cfg.cryDir) { cryKey = cfg.cryDir; missing.clear(); }
       levels();
       if (cur && want) start(want, true);         // pick up tempo / volume / file changes
     },

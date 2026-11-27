@@ -540,7 +540,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     save.partner = uid; P.x = P.tx = 0.5; P.act = null;
     PP.Sprite.preload(speciesOf(e.species).folder);
     S.log('pokemon', `${labelOf(e)} is now the partner on the home screen`);
-    commit(); toast(`${labelOf(e)} is your partner now`); { const ps = speciesOf(e.species); if (ps) PP.Audio.cry(ps.id, false, ps.dex); }
+    commit(); toast(`${labelOf(e)} is your partner now`); { const ps = speciesOf(e.species); if (ps) PP.Audio.cry(ps.folder); }
     setTimeout(() => playAnim('Hop'), 200);
   }
   /** add to / take out of the battle team (at least one Pokémon always stays in) */
@@ -1442,7 +1442,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     takeOut(e.uid); const got = putIn(t.offer, `Traded from ${t.fromName}`);
     save.tradesDone[id] = 'received';
     S.log('pokemon', `Traded ${labelOf(e)} to ${t.fromName} for ${got ? labelOf(got) : t.offer.species}`);
-    commit(); PP.Audio.sfx('catch'); if (got) setTimeout(() => { const gs = speciesOf(got.species); if (gs) PP.Audio.cry(gs.id, false, gs.dex); }, 700);
+    commit(); PP.Audio.sfx('catch'); if (got) setTimeout(() => { const gs = speciesOf(got.species); if (gs) PP.Audio.cry(gs.folder); }, 700);
     toast(`Trade complete! ${got ? labelOf(got) : 'Your new Pokémon'} joined you.`);
   }
   async function cancelTrade(id) {
@@ -1644,7 +1644,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const id = b.dataset.id;
     switch (b.dataset.do) {
       case 'care': setCare(!careOpen); update(); break;
-      case 'pick-starter': { starterPick = id; renderSheet(); const sp = speciesOf(id); if (sp) PP.Audio.cry(sp.id, false, sp.dex); break; }
+      case 'pick-starter': { starterPick = id; renderSheet(); const sp = speciesOf(id); if (sp) PP.Audio.cry(sp.folder); break; }
       case 'partner': setPartner(id); break;
       case 'team': toggleTeam(id); break;
       case 'heal': { const l = locOf(id); healTeam(l ? `at ${l.name}` : ''); bump('heal'); commit(); toast('Your team is fully healed!'); PP.Audio.sfx('heal'); break; }
