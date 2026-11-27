@@ -83,7 +83,7 @@ window.PP = window.PP || {};
 
   // ---------------- engine ----------------
   let ctx = null, master, musicBus, sfxBus, noise = null;
-  let cfg = { sfxOn: true, musicOn: true, musicVol: .45, sfxVol: .7, tracks: {} };
+  let cfg = { sfxOn: true, musicOn: true, musicVol: .45, sfxVol: .7, tracks: {}, cries: true, cryVol: .8, cryDir: 'assets/Pokemon sound/', cryExt: 'mp3', crySlow: 80 };
   let want = null;          // the track that should be playing
   let cur = null;           // { id, stop() }
   function ensure() {
@@ -284,12 +284,59 @@ window.PP = window.PP || {};
     pop: t => tone(sfxBus, 500, t, .09, { wave: 'sine', slide: 900, vol: .16 }),
   };
 
+  // ---------------- Pokémon cries ----------------
+  // A file in the cry folder (e.g. "assets/Pokemon sound/pikachu.mp3") is used when there is one; otherwise every
+  // species gets its own made-up cry (always the same for that species).
+  const cryFiles = {};                  // species id → Promise<AudioBuffer | null>
+  let cryKey = '';
+  function cryFile(id) {
+    if (!(id in cryFiles)) {
+      const dir = cfg.cryDir.endsWith('/') ? cfg.cryDir : cfg.cryDir + '/';
+      cryFiles[id] = fetch(encodeURI(dir + id + '.' + cfg.cryExt)).then(r => r.ok ? r.arrayBuffer() : null)
+        .then(b => b ? new Promise(res => ctx.decodeAudioData(b, res, () => res(null))) : null).catch(() => null);
+    }
+    return cryFiles[id];
+  }
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  /** a made-up cry: 2–3 chirps whose pitch, shape and length come from the species id */
+  function synthCry(id, t, rate, bus) {
+    let h = hash(id); const r = () => { h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; return h / 4294967296; };
+    const base = 260 + r() * 520, n = 2 + Math.floor(r() * 2), wave = ['square', 'sawtooth', 'triangle'][Math.floor(r() * 3)];
+    let at = t, total = 0;
+    for (let k = 0; k < n; k++) {
+      const len = (.09 + r() * .16) / rate, f0 = base * (.8 + r() * .6) * rate, f1 = f0 * (r() < .5 ? .55 + r() * .3 : 1.2 + r() * .5);
+      tone(bus, f0, at, len, { wave, slide: f1, vol: .16, attack: .01, release: .05, cutoff: 2600 });
+      tone(bus, f0 * 1.5, at, len, { wave: 'sine', slide: f1 * 1.5, vol: .06, attack: .01, release: .05 });
+      at += len + .03 / rate; total += len + .03 / rate;
+    }
+    hit(bus, t, { type: 'bandpass', freq: 1200 + r() * 2000, dur: .12 / rate, vol: .05 });
+    return total;
+  }
+  /** play a species' cry; resolves when it has finished. slow = the fainting version */
+  async function cry(id, slow) {
+    if (!cfg.cries || !sfxAllowed() || !ensure() || !id) return;
+    const rate = slow ? Math.max(.4, cfg.crySlow / 100) : 1;
+    const bus = ctx.createGain(); bus.gain.value = cfg.cryVol; bus.connect(sfxBus);
+    const buf = await Promise.race([cryFile(id), new Promise(r => setTimeout(() => r(null), 1500))]);
+    const t = ctx.currentTime + .02;
+    let secs;
+    if (buf) {
+      const src = ctx.createBufferSource(); src.buffer = buf; src.playbackRate.value = rate;   // slower and a little deeper
+      src.connect(bus); src.start(t); secs = buf.duration / rate;
+    } else secs = synthCry(id, t, rate, bus);
+    await new Promise(r => setTimeout(r, Math.min(4000, secs * 1000 + 80)));
+    setTimeout(() => bus.disconnect(), 500);
+  }
+
   PP.Audio = {
+    cry,
     PIECES,
     configure(d) {
       const s = d.settings;
       cfg = { sfxOn: s.soundOn, musicOn: s.musicOn, musicVol: s.musicVolume / 100, sfxVol: s.sfxVolume / 100,
-        tracks: Object.fromEntries((d.music || []).filter(t => t.enabled).map(t => [t.id, t])) };
+        tracks: Object.fromEntries((d.music || []).filter(t => t.enabled).map(t => [t.id, t])),
+        cries: s.criesOn, cryVol: s.cryVolume / 100, cryDir: s.cryFolder, cryExt: s.cryFileType, crySlow: s.cryFaintSpeed };
+      if (cryKey !== cfg.cryDir + cfg.cryExt) { cryKey = cfg.cryDir + cfg.cryExt; for (const k in cryFiles) delete cryFiles[k]; }
       levels();
       if (cur && want) start(want, true);         // pick up tempo / volume / file changes
     },

@@ -42,6 +42,7 @@
   // used when every move is out of PP, so a battle can always go on
   const STRUGGLE = { id: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: 100, pp: 1, left: Infinity, priority: 0, drain: 0 };
   const sfx = n => { if (PP.Audio) PP.Audio.sfx(n); };
+  const cry = (m, slow) => PP.Audio && m ? PP.Audio.cry(m.id, slow) : Promise.resolve();
   const TACKLE = { id: 'tackle', name: 'Tackle', type: 'normal', category: 'physical', power: 40, accuracy: 100, pp: 35, priority: 0, drain: 0 };
 
   /** the moves a species knows at a level: the last 4 it has reached in its learnset */
@@ -337,6 +338,7 @@
         if (crit) await say('A critical hit!');
         if (eff > 1) await say('It’s super effective!'); else if (eff < 1) await say('It’s not very effective…');
         if (def.hp <= 0) {
+          await cry(def, true);                    // a slower cry, then it fades away
           await tween(420, k => { V[other].dy = 50 * k; V[other].alpha = 1 - k; });
           showHud(other, false); sfx('faint');
           await say(`${label(other, true)} fainted!`);
@@ -347,7 +349,7 @@
         V.me.m = cur(); V.me.dx = V.me.dy = 0;
         await say(`Go, ${cur().name}!`, 300);
         await tween(320, k => { V.me.alpha = k; V.me.scale = .3 + .7 * ease(k); });
-        hud('me'); showHud('me', true); await sleep(250);
+        hud('me'); showHud('me', true); await cry(cur());
       }
       async function switchIn(i, forced) {
         if (!forced) { await say(`Come back, ${cur().name}!`, 300); await tween(260, k => { V.me.alpha = 1 - k; V.me.scale = 1 - .7 * k; }); }
@@ -448,7 +450,7 @@
         await say(`${tName} sent out ${foe().name}!`, 300);
         Object.assign(V.foe, { m: foe(), alpha: 0, dx: 0, dy: 0, scale: .3 });
         await tween(320, k => { V.foe.alpha = k; V.foe.scale = .3 + .7 * ease(k); });
-        hud('foe'); showHud('foe', true);
+        hud('foe'); showHud('foe', true); await cry(foe());
       }
       async function pvpTurn(a) {
         busy = true;
@@ -510,7 +512,7 @@
             await say(`${tName} sent out ${foe().name}!`);
             Object.assign(V.foe, { m: foe(), alpha: 0, dx: 0, dy: 0, scale: .3 });
             await tween(320, k => { V.foe.alpha = k; V.foe.scale = .3 + .7 * ease(k); });
-            hud('foe'); showHud('foe', true);
+            hud('foe'); showHud('foe', true); await cry(foe());
           } else return finish(B.kind === 'trainer' ? 'won' : 'beat');
         }
         if (me.hp <= 0) {
@@ -553,8 +555,8 @@
         $('trainerChip').hidden = !vsTrainer;
         $('trainerChip').innerHTML = I('user') + PP.esc(tName);
         await tween(600, k => { V.foe.dx = 260 * (1 - ease(k)); });
-        if (B.kind === 'wild') await say(`A wild ${foe().name} appeared!`);
-        else { await say(PVP ? `Friend battle with ${tName}!` : `${tName} wants to battle!`); await say(`${tName} sent out ${foe().name}!`); }
+        if (B.kind === 'wild') { cry(foe()); await say(`A wild ${foe().name} appeared!`); }
+        else { await say(PVP ? `Friend battle with ${tName}!` : `${tName} wants to battle!`); cry(foe()); await say(`${tName} sent out ${foe().name}!`); }
         hud('foe'); showHud('foe', true);
         await sendOut();
         commands();
