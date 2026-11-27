@@ -688,10 +688,10 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const text = linesOf2(st.text);
     closeSheet(true);
     if (st.type === 'trainer') {
-      const t = data.trainers.find(x => x.id === st.trainer); if (!t) return toast('This trainer is missing (check the admin).');
+      const t = data.trainers.find(x => x.id === st.trainer); if (!t) return toast('This battle isn’t ready yet. Try again later.');
       if (!t.mustWin && !canBattle()) { openSheet('explore'); return toast('Your team can’t battle. Heal them at a town first.'); }
       const foes = PP.Story.team(data, save, t);
-      if (!foes.length) return toast('This trainer has no Pokémon (check the admin).');
+      if (!foes.length) return toast('This battle isn’t ready yet. Try again later.');
       return say(text.concat(linesOf2(t.intro)), () => startBattle(area, foes, { step: st, trainer: t }));
     }
     if (st.type === 'wild') {
@@ -915,7 +915,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       sig.loc = locSig;
       $('locCard').innerHTML = l ? `<div class="loc-head">${I('pin')}<span>${esc(l.name)}</span></div>
         <div class="loc-map"></div><div class="loc-sub">${open} of ${total} areas open</div>`
-        : `<div class="loc-head">${I('pin')}<span>No areas</span></div><div class="loc-sub">Add one in the admin</div>`;
+        : `<div class="loc-head">${I('pin')}<span>No areas</span></div><div class="loc-sub">Coming soon</div>`;
     }
 
     // quest card
@@ -1046,7 +1046,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       return { title: s.tabExplore, body: tabs + res
         + (regions.length > 1 ? `<div class="cat-tabs">${regions.map(g => `<button class="cat-tab${g.id === exploreRegion ? ' on' : ''}" data-do="region" data-id="${esc(g.id)}">${esc(g.name)}</button>`).join('')}</div>` : '')
         + `<div class="sec-label">${esc((regions.find(g => g.id === exploreRegion) || {}).name || '')}${nd ? ` · ${esc(nd.label)} ${Math.round(save.needs[nd.id])}/100` : ''}</div>`
-        + (cards || empty('compass', 'No areas yet', 'Areas added in the admin show up here.')) };
+        + (cards || empty('compass', 'No areas yet', 'New areas are coming soon.')) };
     },
     quests() {
       const on = data.quests.filter(questOn);
@@ -1083,8 +1083,8 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
           ${st.claimed ? '' : `<div class="bar" style="--c:var(--gold)"><i style="width:${st.progress / q.target * 100}%"></i></div>`}${st.claimed ? '' : reward(q)}</div>
           <div class="row-side">${st.claimed ? '<span class="qty">Done</span>' : st.done ? `<button class="btn btn-primary btn-sm" data-do="claim" data-id="${esc(q.id)}">Claim</button>` : `<span class="qty tnum">${fmt(st.progress)}/${fmt(q.target)}</span>`}</div></div>`;
       }).join('');
-      const none = { story: ['flag', 'No story quests', 'Story quests added in the admin show up here.'], daily: ['clock', 'No daily quests today', 'Check back after the reset.'],
-        explore: ['compass', 'No exploration quests', 'Exploration quests added in the admin show up here.'], achievement: ['star', 'No achievements yet', 'Achievements added in the admin show up here.'] }[questTab];
+      const none = { story: ['flag', 'No story quests', 'New story quests are coming soon.'], daily: ['clock', 'No daily quests today', 'Check back after the reset.'],
+        explore: ['compass', 'No exploration quests', 'New exploration quests are coming soon.'], achievement: ['star', 'No achievements yet', 'New achievements are coming soon.'] }[questTab];
       return { title: 'Quests', body: tabs + top + (body || empty(...none)) };
     },
     // the PC box: every Pokémon the player owns
@@ -1154,22 +1154,19 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         <div class="sec-label">Sound</div>
         ${[['music', 'music', 'Music', data.settings.musicOn], ['sfx', 'bolt', 'Sound effects', data.settings.soundOn]].map(([k, ic, label, on]) => `
         <label class="row toggle-row"><span class="row-ic" style="--c:var(--accent)">${I(ic)}</span>
-          <div class="row-main"><div class="row-title">${label}</div>${on ? '' : '<div class="row-sub">Turned off by the admin</div>'}</div>
+          <div class="row-main"><div class="row-title">${label}</div>${on ? '' : '<div class="row-sub">Turned off for now</div>'}</div>
           <span class="switch"><input type="checkbox" data-audio="${k}" ${PP.Audio.prefs()[k] && on ? 'checked' : ''} ${on ? '' : 'disabled'}><span></span></span></label>`).join('')}
         ${PP.Cloud.on ? `<div class="sec-label">Account</div>
         <div class="row"><span class="row-ic" style="--c:var(--accent)">${I('user')}</span>
           <div class="row-main"><div class="row-title">${esc(PP.Cloud.user.name || 'Google account')}</div><div class="row-sub">${esc(PP.Cloud.user.email)} · progress saved online</div></div>
           <div class="row-side"><button class="btn btn-sm" data-do="sign-out">Sign out</button></div></div>` : ''}
-        ${!PP.Cloud.on || PP.Cloud.admin ? `<div class="sec-label">Tools</div>
-        <a class="row link-row" href="admin.html" target="_blank" rel="noopener"><span class="row-ic" style="--c:var(--accent)">${I('grid')}</span>
-          <div class="row-main"><div class="row-title">Admin dashboard</div><div class="row-sub">Adjust everything in the game</div></div>${I('external')}</a>` : ''}
-        <p class="muted">Pocket Pals v2 · ${PP.Cloud.on ? 'online' : 'local preview'}${data.settings.fastTime ? ' · fast time on' : ''}</p>` };
+        <p class="muted">Pocket Pals · ${PP.Cloud.on ? 'online' : 'saved on this device'}${data.settings.fastTime ? ' · fast time on' : ''}</p>` };
     },
   };
   /** Explore → Story: the current chapter's checklist, what's next, and the badge case */
   function storyHTML() {
     const ch = PP.Story.currentChapter(data, save), cur = PP.Story.current(data, save);
-    if (!ch) return empty('flag', 'No story yet', 'Chapters and story steps are added in the admin.');
+    if (!ch) return empty('flag', 'No story yet', 'The story is coming soon.');
     const steps = PP.Story.chapterSteps(data, ch.id), done = steps.filter(x => save.story.done[x.id]).length;
     const ICON = { scene: 'megaphone', arrive: 'pin', heal: 'heart', trainer: 'swords', wild: 'paw' };
     const detail = st => {

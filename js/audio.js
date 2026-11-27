@@ -16,52 +16,55 @@ window.PP = window.PP || {};
   // ---------------- the built-in pieces ----------------
   // chords: one per bar. lead/arp/bass: `div` steps per beat; tokens: note, '-' hold, '.' rest.
   // bass tokens: R root, O octave up, 5 fifth. drums: 16 steps per bar ('x' = hit).
-  // In the style of the handheld monster-catching games of the 90s: two pulse channels (12.5 / 25 / 50% duty),
-  // a wave-channel bass and noise drums. Battle tracks have a short intro, then loop from `loop` (a bar number).
+  // Soft, cozy instruments (electric piano, music box, warm pads, round bass, mellow horn, light drums) with a
+  // room reverb. Battle tracks have a short intro, then loop from `loop` (a bar number).
   const PIECES = {
     cozy: {
-      name: 'Hearthmoor Town (home)', bpm: 116, loop: 0,
+      name: 'Hearthmoor Town (home)', bpm: 92, loop: 0,
       chords: ['C', 'Am', 'F', 'G', 'C', 'Em', 'F', 'G'],
-      lead: { wave: 'pulse50', vol: .1, div: 2, vib: true, notes:
+      lead: { wave: 'keys', vol: .2, div: 2, notes:
         'G4 C5 E5 - D5 C5 D5 - | E5 - A4 - C5 - B4 A4 | A4 - F5 - E5 D5 C5 - | D5 - - - G4 - B4 D5 | ' +
         'G5 - E5 - C5 E5 G5 - | B4 - E5 - G5 - E5 D5 | C5 - A4 - F5 - E5 D5 | D5 - B4 - G4 - - .' },
-      arp: { wave: 'pulse12', vol: .035, div: 4, oct: 5, pattern: [0, 1, 2, 3] },
-      bass: { wave: 'triangle', vol: .24, div: 2, oct: 3, pattern: 'R . 5 . O . 5 .' },
-      drums: { vol: .3, kick: 'x.......x.......', snare: '....x.......x...', hat: '..x...x...x...x.' },
+      arp: { wave: 'musicbox', vol: .045, div: 2, oct: 5, pattern: [0, 2, 1, 3] },
+      bass: { wave: 'bass', vol: .2, div: 2, oct: 2, pattern: 'R - - - 5 - - -' },
+      pad: { wave: 'pad', vol: .018, oct: 4 },
+      drums: { vol: .18, kick: 'x.......x.......', hat: '..x...x...x...x.' },
     },
     wild: {
       name: 'Route Rumble (wild battle)', bpm: 172, loop: 2,
       chords: ['E', 'E', 'Em', 'C', 'D', 'B', 'Em', 'C', 'Am', 'B'],
-      lead: { wave: 'pulse25', vol: .1, div: 2, vib: true, notes:
+      lead: { wave: 'horn', vol: .075, div: 2, vib: true, notes:
         'E5 F5 F#5 G5 G#5 A5 A#5 B5 | E6 - - - . . B4 . | ' +
         'B4 . E5 . G5 - F#5 E5 | G5 - E5 - C5 - E5 G5 | F#5 - D5 - A4 - D5 F#5 | F#5 - - - D#5 - B4 . | ' +
         'E5 G5 B5 - A5 G5 F#5 G5 | E5 - - G5 C6 - B5 A5 | A5 - G5 - E5 - C5 E5 | D#5 - F#5 - B5 - A5 F#5' },
-      arp: { wave: 'pulse12', vol: .04, div: 4, oct: 4, pattern: [0, 2, 1, 2] },
-      bass: { wave: 'triangle', vol: .27, div: 4, oct: 2, pattern: 'R O R O R O R O 5 O 5 O R O R O' },
-      drums: { vol: .5, kick: 'x...x...x...x...', snare: '....x.......x..x', hat: 'x.x.x.x.x.x.x.x.' },
+      arp: { wave: 'pluck', vol: .06, div: 4, oct: 4, pattern: [0, 2, 1, 2] },
+      bass: { wave: 'bass', vol: .22, div: 4, oct: 2, pattern: 'R . R O R . R O 5 . 5 O R . R O' },
+      pad: { wave: 'pad', vol: .014, oct: 4 },
+      drums: { vol: .42, kick: 'x...x...x...x...', snare: '....x.......x..x', hat: 'x.x.x.x.x.x.x.x.' },
     },
     trainer: {
       name: 'Trainer Showdown (trainer battle)', bpm: 180, loop: 2,
       chords: ['Am', 'Am', 'Am', 'F', 'G', 'E', 'Am', 'F', 'Dm', 'E'],
-      lead: { wave: 'pulse25', vol: .1, div: 2, vib: true, notes:
+      lead: { wave: 'horn', vol: .075, div: 2, vib: true, notes:
         'A4 . A4 . A4 . C5 . | E5 . E5 . G5 - A5 . | ' +
         'A5 - E5 - A5 - C6 B5 | A5 - F5 - C5 - F5 A5 | B5 - G5 - D5 - G5 B5 | G#5 - - - E5 - G#5 B5 | ' +
         'C6 - B5 A5 E5 - A5 C6 | D6 - C6 A5 F5 - A5 C6 | D6 - A5 - F5 - D5 F5 | E5 - G#5 - B5 - D6 B5' },
-      arp: { wave: 'pulse12', vol: .035, div: 4, oct: 4, pattern: [0, 1, 2, 1] },
-      bass: { wave: 'triangle', vol: .28, div: 4, oct: 2, pattern: 'R R O R R R O R R R O R 5 5 O 5' },
-      drums: { vol: .55, kick: 'x..x..x.x..x..x.', snare: '....x.......x...', hat: 'xxxxxxxxxxxxxxxx' },
+      arp: { wave: 'pluck', vol: .055, div: 4, oct: 4, pattern: [0, 1, 2, 1] },
+      bass: { wave: 'bass', vol: .22, div: 4, oct: 2, pattern: 'R . R R O . R . R . R R 5 . O .' },
+      pad: { wave: 'pad', vol: .014, oct: 4 },
+      drums: { vol: .45, kick: 'x..x..x.x..x..x.', snare: '....x.......x...', hat: 'xxxxxxxxxxxxxxxx' },
     },
     gym: {
       name: 'Badge on the Line (Gym Leader, epic)', bpm: 158, loop: 2,
       chords: ['Dm', 'A', 'Dm', 'Bb', 'C', 'A', 'Dm', 'Bb', 'Gm', 'A'],
-      lead: { wave: 'pulse50', vol: .09, div: 2, vib: true, double: -12, notes:
+      lead: { wave: 'horn', vol: .08, div: 2, vib: true, double: -12, doubleWave: 'keys', notes:
         'D5 - D5 D5 F5 - A5 - | A5 - - - C#6 - E6 . | ' +
         'D6 - - A5 F5 - D5 F5 | F5 - D5 - Bb5 - A5 G5 | G5 - - E5 C6 - Bb5 A5 | A5 - - - C#6 - E6 - | ' +
         'F6 - E6 D6 A5 - D6 F6 | D6 - - Bb5 F5 - Bb5 D6 | G6 - F6 - D6 - Bb5 G5 | A5 - C#6 - E6 - A6 .' },
-      arp: { wave: 'pulse25', vol: .035, div: 4, oct: 4, pattern: [0, 1, 2, 1] },
-      bass: { wave: 'sawtooth', vol: .12, div: 4, oct: 2, pattern: 'R . R O R . R O R . R O 5 . O .' },
-      pad: { wave: 'sawtooth', vol: .022, oct: 3, cutoff: 1300 },
-      drums: { vol: .6, kick: 'x...x.x.x...x.x.', snare: '....x.......x..x', hat: 'x.x.x.x.x.x.x.x.', tom: '..........xx.xxx' },
+      arp: { wave: 'pluck', vol: .05, div: 4, oct: 4, pattern: [0, 1, 2, 1] },
+      bass: { wave: 'bass', vol: .24, div: 4, oct: 2, pattern: 'R . R O R . R O R . R O 5 . O .' },
+      pad: { wave: 'pad', vol: .024, oct: 3 },
+      drums: { vol: .5, kick: 'x...x.x.x...x.x.', snare: '....x.......x..x', hat: 'x.x.x.x.x.x.x.x.', tom: '..........xx.xxx' },
     },
   };
   const NOTE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -90,6 +93,10 @@ window.PP = window.PP || {};
       const comp = ctx.createDynamicsCompressor();
       master = ctx.createGain(); musicBus = ctx.createGain(); sfxBus = ctx.createGain();
       musicBus.connect(master); sfxBus.connect(master); master.connect(comp); comp.connect(ctx.destination);
+      // a soft room reverb on the music
+      const verb = ctx.createConvolver(), send = ctx.createGain(), len = ctx.sampleRate * 2.4, ir = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+      verb.buffer = ir; send.gain.value = .32; musicBus.connect(send); send.connect(verb); verb.connect(master);
       noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
       const ch = noise.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
       levels();
@@ -119,15 +126,56 @@ window.PP = window.PP || {};
       lfo.connect(depth); depth.connect(osc.frequency); lfo.start(t); lfo.stop(t + dur + .05);
     }
     if (o.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.slide), t + dur);
-    const a = o.attack || .008, r = Math.min(o.release || .06, dur), v = o.vol || .2;
+    if (o.detune) osc.detune.setValueAtTime(o.detune, t);
+    const a = o.attack || .008, v = o.vol || .2;
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(v, t + a);
-    g.gain.setValueAtTime(v * (o.sustain || .8), Math.max(t + a, t + dur - r));
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + .02);
+    let end;
+    if (o.decay) {                     // piano-like: fades while held, then a soft release
+      const rel = o.release || .3;
+      g.gain.setTargetAtTime(v * (o.sustain || .25), t + a, o.decay);
+      g.gain.setTargetAtTime(0.0001, t + dur, rel / 3);
+      end = t + dur + rel;
+    } else {
+      const r = Math.min(o.release || .06, dur);
+      g.gain.setValueAtTime(v * (o.sustain || .8), Math.max(t + a, t + dur - r));
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur + .02);
+      end = t + dur + .02;
+    }
     let out = g;
-    if (o.cutoff) { const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = o.cutoff; g.connect(lp); out = lp; }
+    if (o.cutoff) { const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = o.cutoff; lp.Q.value = o.q || .7; g.connect(lp); out = lp; }
     osc.connect(g); out.connect(bus);
-    osc.start(t); osc.stop(t + dur + .05);
+    osc.start(t); osc.stop(end + .05);
+  }
+  // soft instruments for the music (anything else is a plain wave name, e.g. 'pulse25' or 'triangle')
+  function inst(bus, f, t, dur, name, vol, vib) {
+    switch (name) {
+      case 'keys':        // warm electric piano
+        tone(bus, f, t, dur, { wave: 'sine', vol, attack: .006, decay: .55, sustain: .3, release: .45, vib });
+        tone(bus, f * 2, t, dur, { wave: 'sine', vol: vol * .22, attack: .004, decay: .18, sustain: .1, release: .3 });
+        tone(bus, f, t, dur, { wave: 'triangle', vol: vol * .35, attack: .01, decay: .4, sustain: .2, release: .4, cutoff: 1800 });
+        return;
+      case 'musicbox':    // tiny bell
+        tone(bus, f, t, .5, { wave: 'sine', vol, attack: .002, decay: .22, sustain: .05, release: .5 });
+        tone(bus, f * 3, t, .3, { wave: 'sine', vol: vol * .25, attack: .002, decay: .08, sustain: .02, release: .3 });
+        return;
+      case 'pluck':       // soft guitar-ish pluck
+        tone(bus, f, t, dur, { wave: 'triangle', vol, attack: .004, decay: .14, sustain: .12, release: .2, cutoff: 2200 });
+        return;
+      case 'pad':         // slow, warm strings
+        tone(bus, f, t, dur, { wave: 'sawtooth', vol, attack: .5, sustain: .9, release: .9, cutoff: 850, detune: -7 });
+        tone(bus, f, t, dur, { wave: 'sawtooth', vol, attack: .5, sustain: .9, release: .9, cutoff: 850, detune: 7 });
+        return;
+      case 'bass':        // round, soft bass
+        tone(bus, f, t, dur, { wave: 'sine', vol, attack: .01, sustain: .75, release: .12 });
+        tone(bus, f, t, dur, { wave: 'triangle', vol: vol * .45, attack: .01, sustain: .6, release: .1, cutoff: 500 });
+        return;
+      case 'horn':        // mellow brass for the battle melodies
+        tone(bus, f, t, dur, { wave: 'sawtooth', vol, attack: .035, sustain: .75, release: .14, cutoff: 1700, q: 1.2, vib });
+        tone(bus, f, t, dur, { wave: 'sine', vol: vol * .9, attack: .02, sustain: .8, release: .14 });
+        return;
+      default: tone(bus, f, t, dur, { wave: name, vol, release: .08, vib });
+    }
   }
   const waves = {};
   /** a pulse wave with the given duty cycle (0.125, 0.25, 0.5) */
@@ -179,29 +227,29 @@ window.PP = window.PP || {};
           const idx = bar * 4 * P.lead.div + s / per, tok = lead[idx % lead.length], m = midi(tok);
           if (m != null) {
             const dur = span(lead, idx, per * step) * .92;
-            tone(bus, hz(m), t, dur, { wave: P.lead.wave, vol: P.lead.vol, release: .08, vib: P.lead.vib });
-            if (P.lead.double) tone(bus, hz(m + P.lead.double), t, dur, { wave: 'pulse12', vol: P.lead.vol * .8, release: .08 });
+            inst(bus, hz(m), t, dur, P.lead.wave, P.lead.vol, P.lead.vib);
+            if (P.lead.double) inst(bus, hz(m + P.lead.double), t, dur, P.lead.doubleWave || 'keys', P.lead.vol * .8);
           }
         }
       }
       if (P.arp) {
         const per = 4 / P.arp.div;
-        if (s % per === 0) { const ct = chordTones(chord, P.arp.oct), n = s / per; tone(bus, hz(ct[P.arp.pattern[n % P.arp.pattern.length]]), t, per * step * .9, { wave: P.arp.wave, vol: P.arp.vol, release: .05 }); }
+        if (s % per === 0) { const ct = chordTones(chord, P.arp.oct), n = s / per; inst(bus, hz(ct[P.arp.pattern[n % P.arp.pattern.length]]), t, per * step * .9, P.arp.wave, P.arp.vol); }
       }
       if (P.bass) {
         const per = 4 / P.bass.div, perBar = 4 * P.bass.div;
         if (s % per === 0) {
           const idx = s / per, tok = bass[idx % perBar], root = chordTones(chord, P.bass.oct)[0];
           const m = tok === 'R' ? root : tok === 'O' ? root + 12 : tok === '5' ? root + 7 : null;
-          if (m != null) tone(bus, hz(m), t, span(bass, idx, per * step) * .9, { wave: P.bass.wave, vol: P.bass.vol, release: .05, cutoff: P.bass.wave === 'sawtooth' ? 900 : 0 });
+          if (m != null) inst(bus, hz(m), t, span(bass, idx, per * step) * .9, P.bass.wave, P.bass.vol);
         }
       }
-      if (P.pad && s === 0) chordTones(chord, P.pad.oct).slice(0, 3).forEach(m => tone(bus, hz(m), t, 16 * step, { wave: P.pad.wave, vol: P.pad.vol, attack: .3, release: .4, cutoff: P.pad.cutoff || 1200 }));
+      if (P.pad && s === 0) chordTones(chord, P.pad.oct).slice(0, 3).forEach(m => inst(bus, hz(m), t, 16 * step, P.pad.wave, P.pad.vol));
       const D = P.drums;
       if (D) {
         if (D.kick && D.kick[s] === 'x') kick(bus, t, D.vol);
-        if (D.snare && D.snare[s] === 'x') hit(bus, t, { freq: 1800, dur: .12, vol: D.vol * .45 });
-        if (D.hat && D.hat[s] === 'x') hit(bus, t, { freq: 7000, dur: .035, vol: D.vol * .16 });
+        if (D.snare && D.snare[s] === 'x') { hit(bus, t, { type: 'bandpass', freq: 2200, dur: .14, vol: D.vol * .35 }); tone(bus, 190, t, .08, { wave: 'sine', vol: D.vol * .25, slide: 140 }); }
+        if (D.hat && D.hat[s] === 'x') hit(bus, t, { type: 'bandpass', freq: 8500, dur: .03, vol: D.vol * .1 });
         if (D.tom && D.tom[s] === 'x' && bar === bars - 1) tom(bus, t, D.vol);
       }
     }
