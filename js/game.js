@@ -1730,6 +1730,10 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     if (now - lastTouchEnd < 320 && !e.target.closest('button, a, label, input, textarea, select, [data-do], [data-gate], [data-b]')) e.preventDefault();
     lastTouchEnd = now;
   }, { passive: false });
+  // the Home Screen app never scrolls as a whole page (pulling it down used to slide the game around)
+  if (document.documentElement.classList.contains('ios-standalone')) document.addEventListener('touchmove', e => {
+    if (!e.target.closest('.sheet-body, .chat-log, .cat-tabs, .menu, .list, textarea')) e.preventDefault();
+  }, { passive: false });
   ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
   document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
 

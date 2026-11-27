@@ -13,6 +13,7 @@
     (function () {
       const standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
       if (!standalone) return;
+      document.documentElement.classList.add('ios-standalone');
       const fit = () => {
         const tall = window.innerHeight > window.innerWidth, sh = tall ? Math.max(screen.height, screen.width) : Math.min(screen.height, screen.width);
         const gap = Math.round(sh - window.innerHeight);
@@ -28,9 +29,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Pocket Pals">
   <title>Pocket Pals</title>
-  <link rel="stylesheet" href="css/base.css?v=34">
-  <link rel="stylesheet" href="css/game.css?v=34">
-  <link rel="stylesheet" href="css/battle.css?v=34">
+  <link rel="stylesheet" href="css/base.css?v=35">
+  <link rel="stylesheet" href="css/game.css?v=35">
+  <link rel="stylesheet" href="css/battle.css?v=35">
 </head>
 <body>
   <div class="app" id="app">
@@ -102,21 +103,21 @@
     </div>
   </div>
 
-  <script src="js/icons.js?v=34"></script>
-  <script src="js/catalog-items.js?v=34"></script>
-  <script src="js/catalog-pokemon.js?v=34"></script>
-  <script src="js/content-lumera.js?v=34"></script>
-  <script src="js/schema.js?v=34"></script>
-  <script src="js/store.js?v=34"></script>
-  <script src="js/sprite.js?v=34"></script>
-  <script src="js/online/firebase-config.js?v=34"></script>
-  <script src="js/online/cloud.js?v=34"></script>
-  <script src="js/online/social.js?v=34"></script>
-  <script src="js/engine/progression.js?v=34"></script>
-  <script src="js/engine/encounters.js?v=34"></script>
-  <script src="js/audio.js?v=34"></script>
-  <script src="js/battle.js?v=34"></script>
-  <script src="js/engine/story.js?v=34"></script>
-  <script src="js/game.js?v=34"></script>
+  <script src="js/icons.js?v=35"></script>
+  <script src="js/catalog-items.js?v=35"></script>
+  <script src="js/catalog-pokemon.js?v=35"></script>
+  <script src="js/content-lumera.js?v=35"></script>
+  <script src="js/schema.js?v=35"></script>
+  <script src="js/store.js?v=35"></script>
+  <script src="js/sprite.js?v=35"></script>
+  <script src="js/online/firebase-config.js?v=35"></script>
+  <script src="js/online/cloud.js?v=35"></script>
+  <script src="js/online/social.js?v=35"></script>
+  <script src="js/engine/progression.js?v=35"></script>
+  <script src="js/engine/encounters.js?v=35"></script>
+  <script src="js/audio.js?v=35"></script>
+  <script src="js/battle.js?v=35"></script>
+  <script src="js/engine/story.js?v=35"></script>
+  <script src="js/game.js?v=35"></script>
 </body>
 </html>

@@ -561,3 +561,10 @@ body { background: #0e1630; -webkit-tap-highlight-color: transparent; overscroll
 .walk-loot span { padding: 4px 10px; border-radius: 99px; background: var(--surface-2); font-weight: 650; font-size: 13px; }
 .walk-card .btn { width: 100%; justify-content: center; }
 @media (prefers-reduced-motion: reduce) { .walk-flash.go { animation: none; } }
+
+/* Home Screen app on iPhone: be at least as tall as the whole screen. In iOS 26 web apps the "visible" height
+   comes up one status bar short, while 100vh is the full screen; take whichever is bigger, and don't scroll or bounce. */
+@media (max-width: 519.98px) {
+  :root.ios-standalone, :root.ios-standalone body { height: 100vh; overflow: hidden; overscroll-behavior: none; }
+  :root.ios-standalone .app { top: 0; bottom: auto; height: max(100vh, calc(100% + var(--gapfix, 0px))); }
+}
