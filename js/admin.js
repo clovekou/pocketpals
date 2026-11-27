@@ -2,7 +2,7 @@
 // Settings pages and content tables are generated from PP.SCHEMA, so anything added to the
 // schema shows up here automatically. Changes are written to the same storage the game reads,
 // and an open game tab picks them up straight away.
-(function () {
+PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), straight away offline
   'use strict';
   const S = PP.store, SC = PP.SCHEMA, I = PP.icon, esc = PP.esc;
   const main = document.getElementById('main');
@@ -30,7 +30,7 @@
         ${SC.settings.map(g => link('settings/' + g.id, g.icon, g.label)).join('')}</div>
       <div class="nav-group"><div class="nav-title">Content</div>
         ${Object.entries(SC.collections).map(([k, c]) => link('content/' + k, c.icon, c.label, data[k].length)).join('')}</div>
-      <div class="nav-group"><div class="nav-title">System</div>${link('check', 'check', 'Content check', (() => { const n = PP.validate(data).filter(x => x.level === 'error').length; return n ? n + ' ✕' : null; })())}${link('data', 'database', 'Data & backup')}</div>`;
+      <div class="nav-group"><div class="nav-title">System</div>${link('check', 'check', 'Content check', (() => { const n = PP.validate(data).filter(x => x.level === 'error').length; return n ? n + ' ✕' : null; })())}${link('data', 'database', 'Data & backup')}${link('online', 'user', 'Online')}</div>`;
   }
   function route() { return decodeURIComponent(location.hash.slice(1)) || 'overview'; }
   function go() {
@@ -122,6 +122,21 @@
 
   // ---------------- views ----------------
   const VIEWS = {
+    // Online: who may sign in, and who is playing (needs js/online/firebase-config.js)
+    online() {
+      const C = PP.Cloud;
+      if (!C.on) return page('Online', 'Google sign-in, saves in the cloud, and playing with friends.', '', panel('Online mode is off', `
+        <ol class="steps-list">
+          <li>Create a project at <b>console.firebase.google.com</b> (the free Spark plan is enough).</li>
+          <li><b>Build → Authentication → Get started → Google</b>: turn it on.</li>
+          <li><b>Build → Firestore Database → Create database</b>, then paste <code>firestore.rules</code> into its <b>Rules</b> tab (put your own email where it says OWNER_EMAIL) and publish.</li>
+          <li><b>Project settings → Your apps → Web app</b>: copy the config into <code>js/online/firebase-config.js</code>.</li>
+          <li>Reload. The game and the admin will ask you to sign in with Google.</li>
+        </ol>`));
+      setTimeout(loadOnline, 0);
+      return page('Online', `Signed in as ${C.user.email}. Only the emails below can sign in.`, '', `
+        <div id="onlineBody"><div class="empty-note">Loading…</div></div>`);
+    },
     overview() {
       const sv = S.loadSave(data), s = data.settings;
       const need = S.expNeed(sv.level, data);
@@ -362,6 +377,30 @@
   }
 
   // ---------------- render ----------------
+  async function loadOnline() {
+    const el = document.getElementById('onlineBody'); if (!el) return;
+    try {
+      const [acc, players] = await Promise.all([PP.Cloud.getAccess(), PP.Cloud.listPlayers()]);
+      players.sort((a, b) => ((b.at && b.at.seconds) || 0) - ((a.at && a.at.seconds) || 0));
+      el.innerHTML = panel('Who can sign in', `<div class="form-grid">
+          <div class="f"><label class="fl" for="accPlayers">Players (one email per line)</label>
+            <textarea class="inp" id="accPlayers" rows="8" style="height:auto;padding:8px 11px" spellcheck="false">${esc(acc.players.join('\n'))}</textarea>
+            <p class="fh">Friends' Google account emails. Anyone not listed sees “not on the friends list”.</p></div>
+          <div class="f"><label class="fl" for="accAdmins">Admins (one email per line)</label>
+            <textarea class="inp" id="accAdmins" rows="4" style="height:auto;padding:8px 11px" spellcheck="false">${esc(acc.admins.join('\n'))}</textarea>
+            <p class="fh">Can open this admin and change the game for everyone. The owner email in firestore.rules always can.</p></div>
+        </div><div style="margin-top:12px">${btn('Save the list', 'access-save', { cls: 'btn-primary', icon: 'check' })}</div>`)
+        + panel(`Players (${players.length})`, players.length ? `<table class="tbl"><thead><tr><th>Name</th><th class="r">Trainer Lv</th><th class="r">Badges</th><th class="r">Caught</th><th class="r">Last played</th></tr></thead><tbody>
+          ${players.map(p => `<tr><td><b>${esc(p.name || '(no name yet)')}</b></td><td class="r tnum">${p.level || 1}</td><td class="r tnum">${p.badges || 0}</td><td class="r tnum">${p.caught || 0}</td>
+            <td class="r">${p.at && p.at.seconds ? esc(ago(p.at.seconds * 1000)) : '—'}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-note">Nobody has played online yet.</div>', { flush: true });
+    } catch (e) { el.innerHTML = `<div class="empty-note">Couldn’t load the online data (${esc(e.code || e.message)}).</div>`; }
+  }
+  async function saveAccess() {
+    const list = id => [...new Set(document.getElementById(id).value.split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(x => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)))];
+    const acc = { players: list('accPlayers'), admins: list('accAdmins') };
+    try { await PP.Cloud.setAccess(acc); S.log('admin', `Online access list saved: ${acc.players.length} players, ${acc.admins.length} admins`); toast('Access list saved'); loadOnline(); }
+    catch (e) { toast('Couldn’t save: ' + (e.code || e.message)); }
+  }
   function render() {
     document.getElementById('sideNav').innerHTML = navHTML();
     const [kind, arg] = view.split('/');
@@ -570,6 +609,7 @@
       case 'open-game': window.open('index.html', '_blank'); break;
       case 'recheck': render(); toast('Checked'); break;
       case 'quick': quick(b.dataset.q); break;
+      case 'access-save': saveAccess(); break;
       case 'filter': logFilter = b.dataset.k; render(); break;
       case 'defaults': {
         const g = SC.settings.find(x => x.id === key);
@@ -640,4 +680,4 @@
   }
 
   go();
-})();
+});

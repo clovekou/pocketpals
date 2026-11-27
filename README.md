@@ -21,6 +21,24 @@ saved from `file://`, so stick to one way of opening it. Use **Admin → Data & 
 | `js/icons.js` | Line icons used by both. |
 | `css/base.css` | Shared design tokens (light and dark). |
 
+## Online (Google sign-in, Firebase)
+Off until `js/online/firebase-config.js` has your Firebase config; until then everything stays in the browser.
+When it's on, the game and the admin ask for Google sign-in, and only emails on the allowlist
+(**Admin → Online**) get in. Saves and the game data live in Firestore and sync between devices; in-game
+names are unique across all players. Layout and permissions are in `js/online/cloud.js` and `firestore.rules`.
+
+Setup (once):
+1. **console.firebase.google.com** → create a project (free Spark plan).
+2. **Authentication → Sign-in method → Google**: enable. **Firestore Database**: create.
+3. **Firestore → Rules**: paste `firestore.rules`, replace `OWNER_EMAIL` with your Google email, publish.
+4. **Project settings → Your apps → Web (</>)**: register an app and paste its config into `js/online/firebase-config.js`.
+5. **Hosting**: pushes to `main` deploy through `.github/workflows/firebase-hosting.yml`. On GitHub add the secret
+   `FIREBASE_SERVICE_ACCOUNT` (Project settings → Service accounts → Generate new private key, paste the whole JSON)
+   and the variable `FIREBASE_PROJECT_ID`.
+6. Add your Firebase Hosting domain in **Authentication → Settings → Authorized domains** if it isn't there.
+
+Keep the GitHub repository **private**: the game uses Pokémon names and art.
+
 ## The rule: everything is adjustable from the admin
 1. **Describe it in `schema.js` first.** A new number goes in `settings`. A new kind of thing goes in
    `collections`, with its fields and default rows. Admin pages for it appear automatically.

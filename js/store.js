@@ -8,6 +8,7 @@
   const KEYS = { data: 'pp2.data', save: 'pp2.save', log: 'pp2.log', names: 'pp2.names' };
   const clone = o => JSON.parse(JSON.stringify(o));
   let logLimit = 500;
+  const externals = [];          // onExternal listeners, also called by emit()
 
   function read(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
   function write(k, v) {
@@ -276,12 +277,15 @@
     },
     /** fn('data' | 'save' | 'log' | 'all') when another tab changes storage */
     onExternal(fn) {
+      externals.push(fn);
       window.addEventListener('storage', e => {
         if (e.key === null) return fn('all');
         const name = Object.keys(KEYS).find(k => KEYS[k] === e.key);
         if (name) fn(name);
       });
     },
+    /** tell this tab's listeners that something changed elsewhere (used by online sync) */
+    emit(kind) { externals.forEach(fn => fn(kind)); },
     // ---------- in-game names ----------
     // Names are unique on this device: once a player takes a name it stays taken (even after a reset)
     // until the admin releases it. Truly unique names across players need online accounts.

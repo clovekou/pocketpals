@@ -1,7 +1,7 @@
 // Pocket Pals v2 — game screen.
 // Every number comes from `data` (admin-editable, see schema.js); every reward or change the
 // game makes is written to the activity log so it shows up in Admin → Activity.
-(function () {
+PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), straight away offline
   'use strict';
   const S = PP.store, I = PP.icon, esc = PP.esc;
   const $ = id => document.getElementById(id);
@@ -293,10 +293,10 @@
     commit(); toast(`Reward claimed: ${q.title}`);
   }
   /** change the in-game name; returns the reason it was refused, or null */
-  function rename(name) {
+  async function rename(name) {
     name = String(name || '').trim().replace(/\s+/g, ' ');
     if (name === save.name) return null;
-    const why = S.checkName(name, data, save.name);
+    const why = S.checkName(name, data, save.name) || await PP.Cloud.claimName(name, save.name);   // online: unique across all players
     if (why) return why;
     S.claimName(name, save.name);
     S.log('system', `Player renamed: ${save.name} → ${name}`);
@@ -799,9 +799,9 @@
       <p class="dlg-err" id="pnameErr"></p>`;
     setTimeout(() => { const i = $('pnameInput'); if (i) i.focus(); }, 60);
   }
-  function submitName(v) {
+  async function submitName(v) {
     const name = String(v || '').trim().replace(/\s+/g, ' ');
-    const why = S.checkName(name, data, null);
+    const why = S.checkName(name, data, null) || await PP.Cloud.claimName(name, null);
     if (why) { $('pnameErr').textContent = why; return; }
     S.claimName(name, null);
     S.log('system', `New player chose the name ${name}`);
@@ -1144,10 +1144,14 @@
         ${owned.length ? `<div class="icon-grid">${owned.map(p => { const pic = PP.Sprite.portrait(p.folder);
           return `<button class="icon-pick${p.id === icon ? ' on' : ''}" data-do="avatar" data-id="${esc(p.id)}" title="${esc(p.name)}" aria-pressed="${p.id === icon}">${pic ? `<img src="${pic}" alt="">` : I('pokeball')}<span>${esc(p.name)}</span></button>`; }).join('')}</div>
           <p class="muted" style="margin-top:8px;text-align:left">Pick from the Pokémon in your PC box.</p>` : '<p class="muted" style="text-align:left">Choose a starter first.</p>'}
-        <div class="sec-label">Tools</div>
+        ${PP.Cloud.on ? `<div class="sec-label">Account</div>
+        <div class="row"><span class="row-ic" style="--c:var(--accent)">${I('user')}</span>
+          <div class="row-main"><div class="row-title">${esc(PP.Cloud.user.name || 'Google account')}</div><div class="row-sub">${esc(PP.Cloud.user.email)} · progress saved online</div></div>
+          <div class="row-side"><button class="btn btn-sm" data-do="sign-out">Sign out</button></div></div>` : ''}
+        ${!PP.Cloud.on || PP.Cloud.admin ? `<div class="sec-label">Tools</div>
         <a class="row link-row" href="admin.html" target="_blank" rel="noopener"><span class="row-ic" style="--c:var(--accent)">${I('grid')}</span>
-          <div class="row-main"><div class="row-title">Admin dashboard</div><div class="row-sub">Adjust everything in the game</div></div>${I('external')}</a>
-        <p class="muted">Pocket Pals v2 · local preview${data.settings.fastTime ? ' · fast time on' : ''}</p>` };
+          <div class="row-main"><div class="row-title">Admin dashboard</div><div class="row-sub">Adjust everything in the game</div></div>${I('external')}</a>` : ''}
+        <p class="muted">Pocket Pals v2 · ${PP.Cloud.on ? 'online' : 'local preview'}${data.settings.fastTime ? ' · fast time on' : ''}</p>` };
     },
   };
   /** Explore → Story: the current chapter's checklist, what's next, and the badge case */
@@ -1278,6 +1282,7 @@
       case 'act': { const a = data.actions.find(x => x.id === id); if (a) doAction(a); break; }
       case 'sheet': openSheet(b.dataset.kind); break;
       case 'close': closeSheet(); break;
+      case 'sign-out': persist(); PP.Cloud.signOut(); break;
       case 'claim': { e.stopPropagation(); const q = data.quests.find(x => x.id === id); if (q) claim(q); break; }
       case 'explore': { const l = locOf(id); if (l) explore(l); break; }
       case 'buy': { const it = itemOf(id); if (it) buy(it); break; }
@@ -1291,9 +1296,10 @@
   document.addEventListener('submit', e => {
     if (e.target.dataset.form === 'name') {
       e.preventDefault();
-      const why = rename($('nameInput').value);
-      $('nameErr').textContent = why || '';
-      if (!why) $('nameInput').blur();
+      rename($('nameInput').value).then(why => {
+        $('nameErr').textContent = why || '';
+        if (!why) $('nameInput').blur();
+      });
     }
     if (e.target.dataset.form === 'pname') { e.preventDefault(); submitName($('pnameInput').value); }
     if (e.target.dataset.form === 'petname') { e.preventDefault(); const i = $('petNameInput'); i.blur(); renamePet(i.value); }
@@ -1347,4 +1353,4 @@
   setInterval(() => { advance(); update(); idleReact(); if (++ticks % 5 === 0) persist(); }, 1000);
   window.addEventListener('pagehide', persist);
   document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
-})();
+});

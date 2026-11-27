@@ -1,0 +1,20 @@
+# Publishes the game to Firebase Hosting every time main is pushed.
+# Needs two settings on GitHub (repo → Settings → Secrets and variables → Actions):
+#   secret   FIREBASE_SERVICE_ACCOUNT  the JSON key of a Firebase service account
+#   variable FIREBASE_PROJECT_ID       your Firebase project ID
+name: Deploy to Firebase Hosting
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ${{ vars.FIREBASE_PROJECT_ID }}
+          channelId: live

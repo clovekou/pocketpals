@@ -1,0 +1,32 @@
+rules_version = '2';
+// Pocket Pals security rules. Paste into Firebase console → Firestore Database → Rules → Publish.
+// 1. Replace OWNER_EMAIL below with the Google account that owns the game (lower case).
+// 2. That account can always open the admin. Add friends in Admin → Online.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null && request.auth.token.email_verified == true; }
+    function email() { return request.auth.token.email.lower(); }
+    function owner() { return signedIn() && email() == 'OWNER_EMAIL'; }
+    function accessDoc() { return /databases/$(db)/documents/config/access; }
+    function listed(field) { return exists(accessDoc()) && email() in get(accessDoc()).data[field]; }
+    function admin() { return owner() || (signedIn() && listed('admins')); }
+    function player() { return admin() || (signedIn() && listed('players')); }
+    function me(uid) { return request.auth.uid == uid; }
+
+    // game data (settings + content): every player reads it, only admins change it
+    match /config/game { allow read: if player(); allow write: if admin(); }
+    // the email allowlist
+    match /config/access { allow read, write: if admin(); }
+    // a player's full save: only them (admins can read it for support)
+    match /saves/{uid} { allow read: if player() && (me(uid) || admin()); allow write: if player() && me(uid); }
+    // public profile friends can see
+    match /players/{uid} { allow read: if player(); allow write: if player() && me(uid); }
+    // unique in-game names: first come, first served; only the holder can give a name back
+    match /names/{key} {
+      allow read: if player();
+      allow create: if player() && request.resource.data.uid == request.auth.uid;
+      allow update: if player() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
+      allow delete: if player() && resource.data.uid == request.auth.uid;
+    }
+  }
+}
