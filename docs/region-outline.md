@@ -6,7 +6,7 @@ Encounter tables are **custom game-design tables**, not official data. Every pla
 here becomes admin-editable content.
 
 ## Cast
-- **Professor Hazel**: runs the lab in Hearthmoor Village and gives you your partner.
+- **Professor Kou**: runs the lab in Hearthmoor Village and gives you your partner.
 - **Kai**: your rival from the same village. Battles you at key points and becomes Champion before you.
 - **Team Eclipse**: wants to control the region's rare Pokémon. Led by **Director Vex**.
 - **Gym Leaders**: Fenna (Grass), Caspian (Water), Rhett (Electric), Garnet (Rock), Celeste (Psychic),

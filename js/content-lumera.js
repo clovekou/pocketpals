@@ -23,7 +23,7 @@ PP.LUMERA = {
   ],
   trainers: [
     { id: 'kai-1', trainerClass: 'Rival', name: 'Kai', kind: 'rival', area: 'hearthmoor', team: 'counter:5', prize: 100, badge: 'none', mustWin: true, noSuperEffective: true, background: 'auto',
-      intro: 'Kai: Hold on, {name}! Hazel gave you a Pokémon too?\nKai: Then let’s see whose partner is stronger!', defeat: 'Kai: No way… Fine, I’ll train harder. See you out there!' },
+      intro: 'Kai: Hold on, {name}! Professor Kou gave you a Pokémon too?\nKai: Then let’s see whose partner is stronger!', defeat: 'Kai: No way… Fine, I’ll train harder. See you out there!' },
     { id: 'theo', trainerClass: 'Bug Fan', name: 'Theo', kind: 'trainer', area: 'fernway-trail', team: 'caterpie:3, weedle:3', prize: 60, badge: 'none', background: 'auto',
       intro: 'Theo: My bugs have been training all morning. Battle me!', defeat: 'Theo: Aw, they need more practice.' },
     { id: 'mira', trainerClass: 'Camper', name: 'Mira', kind: 'trainer', area: 'fernway-trail', team: 'rattata:4, pidgey:4', prize: 80, badge: 'none', background: 'auto',

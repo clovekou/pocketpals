@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 12,
+  contentVersion: 13,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -38,12 +38,16 @@ PP.SCHEMA = {
     { v: 12, collection: 'music', ids: ['battle-wild'], set: { name: 'Wild battle: Route Rumble' } },
     { v: 12, collection: 'music', ids: ['battle-trainer'], set: { name: 'Trainer battle: Trainer Showdown' } },
     { v: 12, collection: 'music', ids: ['battle-gym'], set: { name: 'Gym Leader: Badge on the Line' } },
+    // the Professor is now Professor Kou
+    { v: 13, collection: 'trainers', ids: ['kai-1'], set: { intro: 'Kai: Hold on, {name}! Professor Kou gave you a Pokémon too?\nKai: Then let’s see whose partner is stronger!' } },
+    { v: 13, collection: 'locations', ids: ['hearthmoor'], set: { description: 'Your quiet home village and Professor Kou’s lab.' } },
   ],
   // One-time setting changes applied to saved data older than `v` (new defaults that should win over
   // values saved before they existed). The admin can change them again afterwards.
   settingsUpdates: [
     { v: 3, set: { homeBackground: 'green-meadow', tabPals: 'Pokemon', tabParty: 'Friends' } },
     { v: 5, set: { expGrowth: 1.06 } },
+    { v: 13, set: { professorName: 'Professor Kou' } },
   ],
 
   // ---------- single-value settings, grouped into admin pages ----------
@@ -76,7 +80,7 @@ PP.SCHEMA = {
       { key: 'exploreCooldownSec', label: 'Wait between explores', type: 'int', min: 0, max: 86400, def: 5, suffix: 'sec' },
     ] },
     { id: 'story', label: 'Welcome & tutorial', icon: 'megaphone', desc: 'What the Professor says to new players. One line per paragraph; each line is a new text box. You can use {name}, {pokemon}, {professor}, {coins} and {gems}. Tutorial steps are under Content → Tutorial.', fields: [
-      { key: 'professorName', label: 'Professor’s name', type: 'text', def: 'Professor Hazel', max: 30 },
+      { key: 'professorName', label: 'Professor’s name', type: 'text', def: 'Professor Kou', max: 30 },
       { key: 'professorImage', label: 'Professor picture', type: 'image', preview: 'square', def: '', max: 300, help: 'Optional path to a picture, e.g. assets/professor.png. Empty shows an icon.' },
       { key: 'introLines', label: 'Welcome (before asking the name)', type: 'textarea', max: 1500, def: 'Hello there! Welcome to the world of Pokémon!\nMy name is {professor}. People call me the Pokémon Professor.\nThis world is full of creatures called Pokémon. Some people keep them as pets, others go on adventures with them.\nBut first, tell me a little about yourself. What is your name?' },
       { key: 'afterNameLines', label: 'After the name (before the starter)', type: 'textarea', max: 1500, def: 'So your name is {name}! What a great name.\n{name}, your very own Pokémon adventure is about to begin.\nEvery trainer needs a partner. Choose one of these three Pokémon!' },
@@ -432,7 +436,7 @@ PP.SCHEMA = {
       ],
       // Lumera, chapters 1–3 (original region; see docs/region-outline.md)
       rows: [
-        { id: 'hearthmoor', name: 'Hearthmoor Village', region: 'lumera', environment: 'town', enabled: true, description: 'Your quiet home village and Professor Hazel’s lab.', unlockLevel: 1, reqAreas: [], energyCost: 2, coinsMin: 5, coinsMax: 15, gemChance: 2, gemAmount: 1, itemChance: 20, dropItem: 'random', exp: 4, encounterChance: 0 },
+        { id: 'hearthmoor', name: 'Hearthmoor Village', region: 'lumera', environment: 'town', enabled: true, description: 'Your quiet home village and Professor Kou’s lab.', unlockLevel: 1, reqAreas: [], energyCost: 2, coinsMin: 5, coinsMax: 15, gemChance: 2, gemAmount: 1, itemChance: 20, dropItem: 'random', exp: 4, encounterChance: 0 },
         { id: 'fernway-trail', name: 'Fernway Trail', region: 'lumera', environment: 'grassland', enabled: true, description: 'A gentle path of tall grass leading out of the village.', unlockLevel: 1, reqAreas: [], reqStep: 'c1-route', energyCost: 6, coinsMin: 8, coinsMax: 25, gemChance: 4, gemAmount: 1, itemChance: 25, dropItem: 'random', exp: 8, encounterChance: 45 },
         { id: 'brookhaven', name: 'Brookhaven Town', region: 'lumera', environment: 'town', enabled: true, description: 'A riverside town with a busy market.', unlockLevel: 1, reqAreas: [], reqStep: 'c2-brookhaven', energyCost: 3, coinsMin: 10, coinsMax: 30, gemChance: 3, gemAmount: 1, itemChance: 30, dropItem: 'random', exp: 6, encounterChance: 0 },
         { id: 'willowbank-path', name: 'Willowbank Path', region: 'lumera', environment: 'grassland', enabled: true, description: 'Willow trees line this flowery route west of Brookhaven.', unlockLevel: 1, reqAreas: [], reqStep: 'c2-willowbank', energyCost: 8, coinsMin: 12, coinsMax: 35, gemChance: 5, gemAmount: 1, itemChance: 25, dropItem: 'random', exp: 12, encounterChance: 50 },
