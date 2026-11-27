@@ -41,8 +41,9 @@
   const effect = (type, def) => def.types.reduce((x, t) => x * ((CHART[type] || {})[t] != null ? CHART[type][t] : 1), 1);
   // used when every move is out of PP, so a battle can always go on
   const STRUGGLE = { id: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: 100, pp: 1, left: Infinity, priority: 0, drain: 0 };
-  const sfx = n => { if (PP.Audio) PP.Audio.sfx(n); };
-  const cry = (m, slow) => PP.Audio && m ? PP.Audio.cry(m.folder, slow) : Promise.resolve();   // by sprite folder number
+  // sound must never be able to stop a battle: any sound error is ignored
+  const sfx = n => { try { if (PP.Audio) PP.Audio.sfx(n); } catch (e) {} };
+  const cry = (m, slow) => { try { return PP.Audio && m ? Promise.resolve(PP.Audio.cry(m.folder, slow)).catch(() => {}) : Promise.resolve(); } catch (e) { return Promise.resolve(); } };   // by sprite folder number
   const TACKLE = { id: 'tackle', name: 'Tackle', type: 'normal', category: 'physical', power: 40, accuracy: 100, pp: 35, priority: 0, drain: 0 };
 
   /** the moves a species knows at a level: the last 4 it has reached in its learnset */
@@ -151,7 +152,7 @@
         let n = 0;
         await new Promise(res => {
           const iv = setInterval(() => { const shown = text.slice(n, n + 2); n += 2; el.textContent = text.slice(0, n);
-            if (PP.Audio && PP.Audio.blip && /[\p{L}\p{N}]/u.test(shown)) PP.Audio.blip('battle');
+            try { if (PP.Audio && PP.Audio.blip && /[\p{L}\p{N}]/u.test(shown)) PP.Audio.blip('battle'); } catch (e) {}
             if (n >= text.length) { clearInterval(iv); res(); } }, 16);
           skip = () => { clearInterval(iv); el.textContent = text; res(); };
         });
@@ -316,7 +317,7 @@
         const att = side === 'me' ? cur() : foe(), def = side === 'me' ? foe() : cur(), other = side === 'me' ? 'foe' : 'me';
         if (side === 'me') mv.left--;
         await say(`${label(side, true)} used ${mv.name}!`, 200);
-        play(side, 'Attack'); if (PP.Audio && PP.Audio.move) PP.Audio.move(mv.type);
+        play(side, 'Attack'); try { if (PP.Audio && PP.Audio.move) PP.Audio.move(mv.type); } catch (e) {}
         const lx = side === 'me' ? 22 : -22, ly = side === 'me' ? -10 : 8;
         await tween(150, k => { V[side].dx = lx * k; V[side].dy = ly * k; });
         await tween(150, k => { V[side].dx = lx * (1 - k); V[side].dy = ly * (1 - k); });
