@@ -377,7 +377,23 @@ window.PP = window.PP || {};
     fairy: t => [88, 91, 95, 100].forEach((m, k) => tone(sfxBus, hz(m), t + k * .05, .16, { wave: 'sine', vol: .08 })),
   };
 
+  // ---------------- dialogue blips (a soft "pip" as the letters appear) ----------------
+  let lastBlip = 0;
+  /** one blip for newly shown text; who = the speaker (each voice has its own pitch). Throttled. */
+  function blip(who) {
+    if (cfg.textOn === false || !sfxAllowed() || !ctx || ctx.state !== 'running') return;
+    const now = ctx.currentTime;
+    if (now - lastBlip < .055) return;
+    lastBlip = now;
+    const shift = who ? (hash(String(who)) % 9) - 4 : 0;                     // −4…+4 semitones per speaker
+    const f = (cfg.textPitch || 660) * Math.pow(2, (shift + (Math.random() * .6 - .3)) / 12);
+    const v = .09 * (cfg.textVol != null ? cfg.textVol : .4) / .4;
+    tone(sfxBus, f, now + .005, .035, { wave: 'triangle', vol: v, attack: .002, release: .03, sustain: .5 });
+    tone(sfxBus, f * 2, now + .005, .025, { wave: 'sine', vol: v * .35, attack: .002, release: .02, sustain: .4 });
+  }
+
   PP.Audio = {
+    blip,
     /** the short sound for a move of this type */
     move(type) { if (!sfxAllowed() || !ensure()) return; const f = MOVE[type] || MOVE.normal; try { f(ctx.currentTime + .01); } catch (e) {} },
     cry,
@@ -386,7 +402,8 @@ window.PP = window.PP || {};
       const s = d.settings;
       cfg = { sfxOn: s.soundOn, musicOn: s.musicOn, musicVol: s.musicVolume / 100, sfxVol: s.sfxVolume / 100,
         tracks: Object.fromEntries((d.music || []).filter(t => t.enabled).map(t => [t.id, t])),
-        cries: s.criesOn, cryVol: s.cryVolume / 100, cryDir: s.cryFolder.trim(), cryExt: s.cryFileType, cryNaming: s.cryNaming, crySlow: s.cryFaintSpeed };
+        cries: s.criesOn, cryVol: s.cryVolume / 100, cryDir: s.cryFolder.trim(), cryExt: s.cryFileType, cryNaming: s.cryNaming, crySlow: s.cryFaintSpeed,
+        textOn: s.textSoundOn, textPitch: s.textSoundPitch, textVol: s.textSoundVolume / 100 };
       if (cryKey !== cfg.cryDir + cfg.cryExt + cfg.cryNaming) { cryKey = cfg.cryDir + cfg.cryExt + cfg.cryNaming; missing.clear(); }
       levels();
       if (cur && want) start(want, true);         // pick up tempo / volume / file changes

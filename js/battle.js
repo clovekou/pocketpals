@@ -150,7 +150,9 @@
         const el = $('msgText'); $('msgNext').hidden = true;
         let n = 0;
         await new Promise(res => {
-          const iv = setInterval(() => { n += 2; el.textContent = text.slice(0, n); if (n >= text.length) { clearInterval(iv); res(); } }, 16);
+          const iv = setInterval(() => { const shown = text.slice(n, n + 2); n += 2; el.textContent = text.slice(0, n);
+            if (PP.Audio && PP.Audio.blip && /[\p{L}\p{N}]/u.test(shown)) PP.Audio.blip('battle');
+            if (n >= text.length) { clearInterval(iv); res(); } }, 16);
           skip = () => { clearInterval(iv); el.textContent = text; res(); };
         });
         $('msgNext').hidden = false;
@@ -397,6 +399,7 @@
         }
         V.ball = null; sfx('breakout');
         await tween(240, k => { V.foe.alpha = k; V.foe.scale = .2 + .8 * k; });
+        cry(f);
         await say(['It broke free!', 'So close… it broke free!', 'Argh! It was almost caught!'][shakes]);
         return false;
       }
