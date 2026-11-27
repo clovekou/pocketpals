@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 .firebase/
 firebase-debug.log
+firestore.mine.rules
