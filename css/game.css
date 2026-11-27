@@ -9,6 +9,11 @@ body { background: #0e1630; -webkit-tap-highlight-color: transparent; overscroll
 /* no double-tap zoom anywhere in the game (touch-action is not inherited, so set it on every element) */
 .app, .app * { touch-action: manipulation; }
 .app input, .app textarea { -webkit-user-select: text; user-select: text; font-size: max(16px, 1em); }   /* 16px+ stops iOS zooming into fields */
+/* phones: pin the game to every edge of the screen (a 100dvh height comes up one status bar short
+   when the game is opened from the Home Screen and draws under the clock) */
+@media (max-width: 519.98px) {
+  .app { position: fixed; inset: 0; width: auto; height: auto; max-width: none; }
+}
 /* on tablets and computers the game stays a phone: a 9 × 19.5 frame that fits the window */
 @media (min-width: 520px) {
   body { display: flex; align-items: center; justify-content: center; min-height: 100vh; min-height: 100dvh; background: #0b0f1a; }
