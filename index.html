@@ -2,15 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" id="vp" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <script>
+    // In Safari the page stays below the clock (iOS blurs anything drawn under it); opened from the Home Screen
+    // there is no Safari bar, so the game uses the whole screen.
+    if (navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches))
+      document.getElementById('vp').content += ', viewport-fit=cover';
+  </script>
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Pocket Pals">
   <title>Pocket Pals</title>
-  <link rel="stylesheet" href="css/base.css?v=18">
-  <link rel="stylesheet" href="css/game.css?v=18">
-  <link rel="stylesheet" href="css/battle.css?v=18">
+  <link rel="stylesheet" href="css/base.css?v=19">
+  <link rel="stylesheet" href="css/game.css?v=19">
+  <link rel="stylesheet" href="css/battle.css?v=19">
 </head>
 <body>
   <div class="app" id="app">
@@ -81,20 +87,20 @@
     </div>
   </div>
 
-  <script src="js/icons.js?v=18"></script>
-  <script src="js/catalog-items.js?v=18"></script>
-  <script src="js/catalog-pokemon.js?v=18"></script>
-  <script src="js/content-lumera.js?v=18"></script>
-  <script src="js/schema.js?v=18"></script>
-  <script src="js/store.js?v=18"></script>
-  <script src="js/sprite.js?v=18"></script>
-  <script src="js/online/firebase-config.js?v=18"></script>
-  <script src="js/online/cloud.js?v=18"></script>
-  <script src="js/engine/progression.js?v=18"></script>
-  <script src="js/engine/encounters.js?v=18"></script>
-  <script src="js/audio.js?v=18"></script>
-  <script src="js/battle.js?v=18"></script>
-  <script src="js/engine/story.js?v=18"></script>
-  <script src="js/game.js?v=18"></script>
+  <script src="js/icons.js?v=19"></script>
+  <script src="js/catalog-items.js?v=19"></script>
+  <script src="js/catalog-pokemon.js?v=19"></script>
+  <script src="js/content-lumera.js?v=19"></script>
+  <script src="js/schema.js?v=19"></script>
+  <script src="js/store.js?v=19"></script>
+  <script src="js/sprite.js?v=19"></script>
+  <script src="js/online/firebase-config.js?v=19"></script>
+  <script src="js/online/cloud.js?v=19"></script>
+  <script src="js/engine/progression.js?v=19"></script>
+  <script src="js/engine/encounters.js?v=19"></script>
+  <script src="js/audio.js?v=19"></script>
+  <script src="js/battle.js?v=19"></script>
+  <script src="js/engine/story.js?v=19"></script>
+  <script src="js/game.js?v=19"></script>
 </body>
 </html>

@@ -4,8 +4,8 @@ html, body { height: 100%; }
   position: relative; display: flex; flex-direction: column; overflow: hidden;
   max-width: 440px; height: 100vh; height: 100dvh; margin: 0 auto; background: var(--bg);
 }
-html { -webkit-text-size-adjust: 100%; }
-body { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+html { -webkit-text-size-adjust: 100%; background: #0e1630; }   /* the strip Safari shows above the game */
+body { background: #0e1630; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 /* no double-tap zoom anywhere in the game (touch-action is not inherited, so set it on every element) */
 .app, .app * { touch-action: manipulation; }
 .app input, .app textarea { -webkit-user-select: text; user-select: text; font-size: max(16px, 1em); }   /* 16px+ stops iOS zooming into fields */
