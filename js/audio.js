@@ -83,7 +83,7 @@ window.PP = window.PP || {};
 
   // ---------------- engine ----------------
   let ctx = null, master, musicBus, sfxBus, noise = null;
-  let cfg = { sfxOn: true, musicOn: true, musicVol: .45, sfxVol: .7, tracks: {}, cries: true, cryVol: .8, cryDir: 'assets/Pokemon sound/', cryExt: 'mp3', crySlow: 80 };
+  let cfg = { sfxOn: true, musicOn: true, musicVol: .45, sfxVol: .7, tracks: {}, cries: true, cryVol: .8, cryDir: '', cryExt: 'ogg', cryNaming: 'number', crySlow: 80 };
   let want = null;          // the track that should be playing
   let cur = null;           // { id, stop() }
   function ensure() {
@@ -287,15 +287,32 @@ window.PP = window.PP || {};
   // ---------------- Pokémon cries ----------------
   // A file in the cry folder (e.g. "assets/Pokemon sound/pikachu.mp3") is used when there is one; otherwise every
   // species gets its own made-up cry (always the same for that species).
-  const cryFiles = {};                  // species id → Promise<AudioBuffer | null>
+  const missing = new Set();           // cry files that failed once (not tried again this visit)
   let cryKey = '';
-  function cryFile(id) {
-    if (!(id in cryFiles)) {
-      const dir = cfg.cryDir.endsWith('/') ? cfg.cryDir : cfg.cryDir + '/';
-      cryFiles[id] = fetch(encodeURI(dir + id + '.' + cfg.cryExt)).then(r => r.ok ? r.arrayBuffer() : null)
-        .then(b => b ? new Promise(res => ctx.decodeAudioData(b, res, () => res(null))) : null).catch(() => null);
-    }
-    return cryFiles[id];
+  /** where a species' cry file is: the folder (a local folder or a web address) + its ID or Pokédex number */
+  function cryUrl(id, dex) {
+    if (!cfg.cryDir) return null;
+    const name = cfg.cryNaming === 'number' ? (dex ? String(dex) : null) : id;
+    if (!name) return null;
+    const dir = cfg.cryDir.endsWith('/') ? cfg.cryDir : cfg.cryDir + '/';
+    return (/^https?:/i.test(dir) ? dir : encodeURI(dir)) + name + '.' + cfg.cryExt;
+  }
+  const canPlay = ext => { try { return !!new Audio().canPlayType({ ogg: 'audio/ogg; codecs="vorbis"', mp3: 'audio/mpeg', wav: 'audio/wav', m4a: 'audio/mp4' }[ext] || 'audio/' + ext); } catch (e) { return false; } };
+  /** play a cry file with the browser's audio player (works for files on other sites too); resolves true if it played */
+  function playFile(url, rate) {
+    return new Promise(res => {
+      const a = new Audio(); let done = false;
+      const end = ok => { if (done) return; done = true; clearTimeout(to); try { a.pause(); } catch (e) {} res(ok); };
+      a.preload = 'auto'; a.volume = Math.max(0, Math.min(1, cfg.cryVol * cfg.sfxVol * 1.2));
+      a.playbackRate = rate; a.preservesPitch = false; a.mozPreservesPitch = false; a.webkitPreservesPitch = false;   // slower = deeper
+      a.onended = () => end(true);
+      a.onerror = () => { missing.add(url); end(false); };
+      let to = setTimeout(() => end(!a.paused), 3500);
+      // once the length is known, don't wait longer than the cry itself (some browsers never report the end)
+      a.onloadedmetadata = () => { if (isFinite(a.duration) && a.duration > 0) { clearTimeout(to); to = setTimeout(() => end(true), Math.min(3000, a.duration / rate * 1000 + 150)); } };   // at most 3 s
+      a.src = url;
+      const p = a.play(); if (p && p.catch) p.catch(() => { missing.add(url); end(false); });
+    });
   }
   function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
   /** a made-up cry: 2–3 chirps whose pitch, shape and length come from the species id */
@@ -313,17 +330,14 @@ window.PP = window.PP || {};
     return total;
   }
   /** play a species' cry; resolves when it has finished. slow = the fainting version */
-  async function cry(id, slow) {
+  async function cry(id, slow, dex) {
     if (!cfg.cries || !sfxAllowed() || !ensure() || !id) return;
-    const rate = slow ? Math.max(.4, cfg.crySlow / 100) : 1;
+    const rate = slow ? Math.max(.5, cfg.crySlow / 100) : 1;
+    const url = cryUrl(id, dex);
+    if (url && !missing.has(url) && canPlay(cfg.cryExt) && await playFile(url, rate)) return;
+    // no file (or this browser can't play it): the game's own cry for this species
     const bus = ctx.createGain(); bus.gain.value = cfg.cryVol; bus.connect(sfxBus);
-    const buf = await Promise.race([cryFile(id), new Promise(r => setTimeout(() => r(null), 1500))]);
-    const t = ctx.currentTime + .02;
-    let secs;
-    if (buf) {
-      const src = ctx.createBufferSource(); src.buffer = buf; src.playbackRate.value = rate;   // slower and a little deeper
-      src.connect(bus); src.start(t); secs = buf.duration / rate;
-    } else secs = synthCry(id, t, rate, bus);
+    const secs = synthCry(id, ctx.currentTime + .02, rate, bus);
     await new Promise(r => setTimeout(r, Math.min(4000, secs * 1000 + 80)));
     setTimeout(() => bus.disconnect(), 500);
   }
@@ -335,8 +349,8 @@ window.PP = window.PP || {};
       const s = d.settings;
       cfg = { sfxOn: s.soundOn, musicOn: s.musicOn, musicVol: s.musicVolume / 100, sfxVol: s.sfxVolume / 100,
         tracks: Object.fromEntries((d.music || []).filter(t => t.enabled).map(t => [t.id, t])),
-        cries: s.criesOn, cryVol: s.cryVolume / 100, cryDir: s.cryFolder, cryExt: s.cryFileType, crySlow: s.cryFaintSpeed };
-      if (cryKey !== cfg.cryDir + cfg.cryExt) { cryKey = cfg.cryDir + cfg.cryExt; for (const k in cryFiles) delete cryFiles[k]; }
+        cries: s.criesOn, cryVol: s.cryVolume / 100, cryDir: s.cryFolder.trim(), cryExt: s.cryFileType, cryNaming: s.cryNaming, crySlow: s.cryFaintSpeed };
+      if (cryKey !== cfg.cryDir + cfg.cryExt + cfg.cryNaming) { cryKey = cfg.cryDir + cfg.cryExt + cfg.cryNaming; missing.clear(); }
       levels();
       if (cur && want) start(want, true);         // pick up tempo / volume / file changes
     },
