@@ -45,6 +45,7 @@
       case 'locationsOrNone': return [['none', 'None']].concat(locs.map(l => [l.id, l.name]));
       case 'itemsOrNone': return [['none', 'None']].concat(items.map(i => [i.id, i.name]));
       case 'storyStepsOrNone': return [['none', 'None (no story step needed)']].concat((d.storySteps || []).map(st => [st.id, `${st.chapter}: ${st.title}`]));
+      case 'musicOrNone': return [['none', 'No music']].concat((d.music || []).map(t => [t.id, t.name]));
       case 'categoriesOrNone': return [['none', 'None (not in a shop tab)']].concat((d.categories || []).map(c => [c.id, c.name]));
       case 'backgroundsOrNone': return [['none', 'None (plain)']].concat((d.backgrounds || []).map(b => [b.id, b.name]));
       case 'backgrounds': return (d.backgrounds || []).map(b => [b.id, b.name]);

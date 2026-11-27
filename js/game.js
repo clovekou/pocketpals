@@ -66,7 +66,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       save.level++;
       save.coins += s.levelUpCoins; save.gems += s.levelUpGems;
       S.log('level', `Trainer reached Lv ${save.level}` + rewardText(s.levelUpCoins, s.levelUpGems));
-      toast(`Trainer level up! Lv ${save.level}`);
+      toast(`Trainer level up! Lv ${save.level}`); PP.Audio.sfx('levelup');
       setTimeout(() => react(s.emoLevel), 0);
     }
     if (save.level >= s.maxLevel) save.exp = Math.min(save.exp, S.expNeed(save.level, data));
@@ -187,7 +187,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     bump('action:' + a.id);
     gainExp(a.exp);
     commit();
-    playAnim(a.anim);
+    playAnim(a.anim); PP.Audio.sfx('pop');
     react(a.emotion);
   }
 
@@ -261,7 +261,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     save[w] -= it.buy; addItem(it.id, 1);
     S.log('shop', `Bought ${it.name} for ${fmt(it.buy)} ${curName(w)}`);
     bump('buy:any');
-    commit(); toast(`Bought ${it.name}`);
+    commit(); toast(`Bought ${it.name}`); PP.Audio.sfx('coin');
   }
   function sell(it) {
     if (!(save.inventory[it.id] > 0)) return;
@@ -290,7 +290,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     if (it) addItem(it.id, q.rewardQty);
     S.log('quest', `${kindLabel(q.kind)} quest “${q.title}” claimed` + rewardText(q.rewardCoins, q.rewardGems) + (q.rewardExp ? `, +${q.rewardExp} EXP` : '') + (it ? `, ${q.rewardQty}× ${it.name}` : ''));
     gainExp(q.rewardExp);
-    commit(); toast(`Reward claimed: ${q.title}`);
+    commit(); toast(`Reward claimed: ${q.title}`); PP.Audio.sfx('coin');
   }
   /** change the in-game name; returns the reason it was refused, or null */
   async function rename(name) {
@@ -605,12 +605,18 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     if (protect) teamEntries().forEach(e => { e.hp = null; });                       // a battle the player can't lose starts fully healed
     teamEntries().forEach(e => { if (e.hp != null) e.hp = Math.floor(e.hp); });    // HP is whole numbers in battle
     const bgs = trainer ? trainerBgs(trainer, area) : battleBgs(area);
+    PP.Audio.play(battleMusic(trainer));
     PP.Battle.start({
       root: layer, data, kind: trainer ? 'trainer' : 'wild', foes, team: teamEntries(), bag: save.inventory, protect, noSuperEffective: !!(trainer && trainer.noSuperEffective),
       trainer: trainer ? { name: PP.Story.trainerName(trainer), prize: trainer.prize } : null,
       backgrounds: bgs, loseText: `You hurry back to ${(locOf(save.lastTown) || { name: 'town' }).name}. Your Pokémon are healed.`,
       onEnd: endBattle,
     });
+  }
+  /** which music a battle uses (Game settings → Sound & music) */
+  function battleMusic(t) {
+    const s = data.settings;
+    return !t ? s.musicWild : ['gym', 'elite', 'champion'].includes(t.kind) ? s.musicGym : s.musicTrainer;
   }
   function trainerBgs(t, area) {
     const s = data.settings, pick = id => (data.backgrounds.find(b => b.id === id) || {}).image;
@@ -621,6 +627,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const ctx = battleCtx || {}, area = ctx.area || locOf(save.location) || {}, t = ctx.trainer, step = ctx.step;
     const foe = speciesOf(r.foe.species) || { name: r.foe.species };
     $('battleLayer').hidden = true; $('battleLayer').innerHTML = '';
+    PP.Audio.play(data.settings.musicHome);
     save.pendingBattle = null; battleCtx = null;
     Object.entries(r.used).forEach(([id, n]) => S.log('item', `Used ${n}× ${(itemOf(id) || { name: id }).name} in battle`));
     r.log.forEach(x => S.log('pokemon', x));
@@ -1144,6 +1151,11 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         ${owned.length ? `<div class="icon-grid">${owned.map(p => { const pic = PP.Sprite.portrait(p.folder);
           return `<button class="icon-pick${p.id === icon ? ' on' : ''}" data-do="avatar" data-id="${esc(p.id)}" title="${esc(p.name)}" aria-pressed="${p.id === icon}">${pic ? `<img src="${pic}" alt="">` : I('pokeball')}<span>${esc(p.name)}</span></button>`; }).join('')}</div>
           <p class="muted" style="margin-top:8px;text-align:left">Pick from the Pokémon in your PC box.</p>` : '<p class="muted" style="text-align:left">Choose a starter first.</p>'}
+        <div class="sec-label">Sound</div>
+        ${[['music', 'music', 'Music', data.settings.musicOn], ['sfx', 'bolt', 'Sound effects', data.settings.soundOn]].map(([k, ic, label, on]) => `
+        <label class="row toggle-row"><span class="row-ic" style="--c:var(--accent)">${I(ic)}</span>
+          <div class="row-main"><div class="row-title">${label}</div>${on ? '' : '<div class="row-sub">Turned off by the admin</div>'}</div>
+          <span class="switch"><input type="checkbox" data-audio="${k}" ${PP.Audio.prefs()[k] && on ? 'checked' : ''} ${on ? '' : 'disabled'}><span></span></span></label>`).join('')}
         ${PP.Cloud.on ? `<div class="sec-label">Account</div>
         <div class="row"><span class="row-ic" style="--c:var(--accent)">${I('user')}</span>
           <div class="row-main"><div class="row-title">${esc(PP.Cloud.user.name || 'Google account')}</div><div class="row-sub">${esc(PP.Cloud.user.email)} · progress saved online</div></div>
@@ -1263,7 +1275,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       case 'pick-starter': starterPick = id; renderSheet(); break;
       case 'partner': setPartner(id); break;
       case 'team': toggleTeam(id); break;
-      case 'heal': { const l = locOf(id); healTeam(l ? `at ${l.name}` : ''); bump('heal'); commit(); toast('Your team is fully healed!'); break; }
+      case 'heal': { const l = locOf(id); healTeam(l ? `at ${l.name}` : ''); bump('heal'); commit(); toast('Your team is fully healed!'); PP.Audio.sfx('heal'); break; }
       case 'region': exploreRegion = id; renderSheet(); break;
       case 'explore-tab': exploreTab = id; renderSheet(); break;
       case 'quest-tab': questTab = id; renderSheet(); $('sheetBody').scrollTop = 0; break;
@@ -1289,6 +1301,10 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       case 'sell': { const it = itemOf(id); if (it) sell(it); break; }
       case 'use': { const it = itemOf(id); if (it) useItem(it); break; }
     }
+  });
+  document.addEventListener('change', e => {
+    const k = e.target.dataset && e.target.dataset.audio;
+    if (k) { PP.Audio.setPrefs({ [k]: e.target.checked }); if (k === 'music' && e.target.checked) PP.Audio.play(battleCtx ? battleMusic(battleCtx.trainer) : data.settings.musicHome); }
   });
   document.addEventListener('input', e => {
     if (e.target.id === 'shopSearch') { shopQuery = e.target.value; refreshShop(); $('sheetBody').scrollTop = 0; }
@@ -1318,6 +1334,8 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       data = S.loadData();
       save = S.normalizeSave(save, data);
       renderShell();
+      PP.Audio.configure(data);
+      PP.Audio.play(battleCtx ? battleMusic(battleCtx.trainer) : data.settings.musicHome);
     }
     if (k === 'save' || k === 'all') {
       const s = S.rawSave();
@@ -1339,6 +1357,8 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
   else if (away >= 30) S.log('system', `Back after ${away >= 120 ? Math.round(away / 60) + ' h' : Math.round(away) + ' min'} of game time; needs dropped while away`);
   persist();
   renderShell(); update();
+  PP.Audio.configure(data);
+  if (!save.pendingBattle) PP.Audio.play(data.settings.musicHome);   // a battle being resumed picks its own music
   const sp0 = petSpecies(); if (sp0) PP.Sprite.preload(sp0.folder);
   giveKit(); persist();
   // a battle was in progress when the game closed: carry on with the same Pokémon

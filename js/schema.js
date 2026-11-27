@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 10,
+  contentVersion: 11,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -120,6 +120,16 @@ PP.SCHEMA = {
       { key: 'battleBgHideout', label: 'Battle background: villain hideouts', type: 'select', optionsFrom: 'backgrounds', def: 'battle-hideout', help: 'Used in hideout areas, and for battles against Team Eclipse.' },
       { key: 'battleBgWater', label: 'Battle background: water', type: 'select', optionsFrom: 'backgrounds', def: 'battle-ocean', help: 'Used for water and island areas. Any area can pick its own under Content → Areas.' },
     ] },
+    { id: 'sound', label: 'Sound & music', icon: 'music', desc: 'Music and sound effects for everyone. Players can also turn them off for themselves in Profile & settings. Tracks are under Content → Music.', fields: [
+      { key: 'musicOn', label: 'Music', type: 'bool', def: true },
+      { key: 'soundOn', label: 'Sound effects', type: 'bool', def: true, help: 'Battle hits, catches, healing, level-ups and buttons.' },
+      { key: 'musicVolume', label: 'Music volume', type: 'int', min: 0, max: 100, def: 45, suffix: '%' },
+      { key: 'sfxVolume', label: 'Sound effects volume', type: 'int', min: 0, max: 100, def: 70, suffix: '%' },
+      { key: 'musicHome', label: 'Music: home screen', type: 'select', optionsFrom: 'musicOrNone', def: 'home-cozy' },
+      { key: 'musicWild', label: 'Music: wild battles', type: 'select', optionsFrom: 'musicOrNone', def: 'battle-wild' },
+      { key: 'musicTrainer', label: 'Music: trainer battles', type: 'select', optionsFrom: 'musicOrNone', def: 'battle-trainer', help: 'Trainers, rivals and villains.' },
+      { key: 'musicGym', label: 'Music: Gym Leaders', type: 'select', optionsFrom: 'musicOrNone', def: 'battle-gym', help: 'Also the Summit Four and the Champion.' },
+    ] },
     { id: 'interface', label: 'Interface', icon: 'grid', desc: 'What shows on the home screen, tab names and the announcement banner.', fields: [
       { key: 'homeBackground', label: 'Home background', type: 'select', optionsFrom: 'backgroundsOrNone', def: 'green-meadow', help: 'Add or edit scenes under Content → Backgrounds. Areas can override it.' },
       { key: 'glassOpacity', label: 'Card opacity over a background', type: 'int', min: 20, max: 100, def: 55, suffix: '%', help: 'Lower = more see-through. Text keeps its contrast either way.' },
@@ -165,6 +175,28 @@ PP.SCHEMA = {
         { id: 'battle-gym', name: 'Battle: Gym arena', image: 'assets/backgrounds/battle-gym.jpg', position: 'bottom', dim: 0 },
         { id: 'battle-ocean', name: 'Battle: Open ocean', image: 'assets/backgrounds/battle-ocean.jpg', position: 'bottom', dim: 0 },
         { id: 'sakura-meadow', name: 'Sakura Meadow', image: 'assets/backgrounds/sakura-meadow.jpg', position: 'bottom', dim: 0 },
+      ],
+    },
+
+    music: {
+      label: 'Music', single: 'Track', icon: 'music',
+      desc: 'Each track plays a built-in piece, or your own audio file if you give one. Choose where each plays in Game settings → Sound & music.',
+      title: r => r.name, sub: r => r.file ? `File: ${r.file}` : `Built-in: ${(PP.Audio && PP.Audio.PIECES[r.style] || {}).name || r.style} · ${r.tempo}% speed`,
+      off: r => !r.enabled,
+      fields: [
+        { key: 'id', label: 'ID', type: 'id' },
+        { key: 'name', label: 'Name', type: 'text', def: 'New track', max: 40 },
+        { key: 'enabled', label: 'On', type: 'bool', def: true },
+        { key: 'style', label: 'Built-in piece', type: 'select', def: 'cozy', options: [['cozy', 'Meadow Home (cozy)'], ['wild', 'Tall Grass Clash (wild battle)'], ['trainer', 'Rival Steps (trainer battle)'], ['gym', 'Leader’s Arena (Gym Leader, epic)']] },
+        { key: 'file', label: 'Your own audio file (optional)', type: 'text', def: '', max: 200, help: 'e.g. assets/music/home.mp3. Put the file in the project folder. Leave empty to use the built-in piece. It loops.' },
+        { key: 'tempo', label: 'Speed (built-in piece)', type: 'int', min: 50, max: 200, def: 100, suffix: '%' },
+        { key: 'volume', label: 'Volume', type: 'int', min: 0, max: 150, def: 100, suffix: '%' },
+      ],
+      rows: [
+        { id: 'home-cozy', name: 'Home: Meadow Home', enabled: true, style: 'cozy', file: '', tempo: 100, volume: 100 },
+        { id: 'battle-wild', name: 'Wild battle: Tall Grass Clash', enabled: true, style: 'wild', file: '', tempo: 100, volume: 100 },
+        { id: 'battle-trainer', name: 'Trainer battle: Rival Steps', enabled: true, style: 'trainer', file: '', tempo: 100, volume: 100 },
+        { id: 'battle-gym', name: 'Gym Leader: Leader’s Arena', enabled: true, style: 'gym', file: '', tempo: 100, volume: 100 },
       ],
     },
 

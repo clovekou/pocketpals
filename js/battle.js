@@ -41,6 +41,7 @@
   const effect = (type, def) => def.types.reduce((x, t) => x * ((CHART[type] || {})[t] != null ? CHART[type][t] : 1), 1);
   // used when every move is out of PP, so a battle can always go on
   const STRUGGLE = { id: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: 100, pp: 1, left: Infinity, priority: 0, drain: 0 };
+  const sfx = n => { if (PP.Audio) PP.Audio.sfx(n); };
   const TACKLE = { id: 'tackle', name: 'Tackle', type: 'normal', category: 'physical', power: 40, accuracy: 100, pp: 35, priority: 0, drain: 0 };
 
   /** the moves a species knows at a level: the last 4 it has reached in its learnset */
@@ -300,7 +301,7 @@
         const lx = side === 'me' ? 22 : -22, ly = side === 'me' ? -10 : 8;
         await tween(150, k => { V[side].dx = lx * k; V[side].dy = ly * k; });
         await tween(150, k => { V[side].dx = lx * (1 - k); V[side].dy = ly * (1 - k); });
-        if (Math.random() * 100 >= mv.accuracy) return say(`${label(side, true)}’s attack missed!`);
+        if (Math.random() * 100 >= mv.accuracy) { sfx('miss'); return say(`${label(side, true)}’s attack missed!`); }
         const eff = effect(mv.type, def);
         if (eff === 0) return say(`It doesn’t affect ${label(other)}…`);
         const crit = Math.random() < 1 / 16, stab = att.types.includes(mv.type) ? 1.5 : 1;
@@ -309,6 +310,7 @@
         dmg = Math.min(def.hp, Math.max(1, Math.floor(dmg * stab * eff * (.85 + Math.random() * .15) * (crit ? 1.5 : 1))));
         if (side === 'foe' && o.protect) dmg = Math.min(dmg, Math.max(0, def.hp - 1));   // a battle the player can't lose
         const before = def.hp; def.hp -= dmg;
+        sfx(eff > 1 ? 'super' : eff < 1 ? 'weak' : crit ? 'crit' : 'hit');
         play(other, 'Hurt'); V[other].flash = performance.now() / 1000 + .5;
         await hpTo(other, before);
         if (mv.drain && att.hp < att.maxhp && att.hp > 0) {
@@ -320,7 +322,7 @@
         if (eff > 1) await say('It’s super effective!'); else if (eff < 1) await say('It’s not very effective…');
         if (def.hp <= 0) {
           await tween(420, k => { V[other].dy = 50 * k; V[other].alpha = 1 - k; });
-          showHud(other, false);
+          showHud(other, false); sfx('faint');
           await say(`${label(other, true)} fainted!`);
           if (other === 'foe') hud('foe');
         }
@@ -344,7 +346,7 @@
           m.lv++; stats(m);
           $('meExp').style.transition = 'none'; $('meExp').style.width = '0%'; void $('meExp').offsetWidth; $('meExp').style.transition = '';
           hud('me'); play('me', 'Hop');
-          await say(`${m.name} grew to Lv ${m.lv}!`);
+          sfx('levelup'); await say(`${m.name} grew to Lv ${m.lv}!`);
           B.log.push(`${m.name} grew to Lv ${m.lv}`);
           const now = movesAt(d, m.sp, m.lv), had = new Set(m.moves.map(x => x.id));
           const fresh = now.filter(x => !had.has(x.id));
@@ -357,7 +359,7 @@
       }
       async function throwBall(it) {
         const f = foe(), fp = pos('foe'), mp = pos('me');
-        await say(`You threw a ${it.name}!`, 150);
+        await say(`You threw a ${it.name}!`, 150); sfx('throw');
         const from = { x: mp.x + 30, y: mp.y - 90 }, to = { x: fp.x, y: fp.y - 46 };
         V.ball = { src: it.image || 'assets/Pokemon Items/Pokeball/Pokeball.png', x: from.x, y: from.y, rot: 0 };
         await tween(650, k => { V.ball.x = from.x + (to.x - from.x) * k; V.ball.y = from.y + (to.y - from.y) * k - Math.sin(k * Math.PI) * 110; V.ball.rot = k * 14; });
@@ -367,15 +369,15 @@
         await tween(260, k => { V.ball.y = to.y + (ground - to.y) * ease(k); });
         const chance = catchChance(it, f), caught = Math.random() < chance;
         const shakes = caught ? 3 : Math.random() < chance ? 2 : Math.random() < .5 ? 1 : 0;
-        for (let s = 0; s < shakes; s++) { await sleep(320); await tween(400, k => { V.ball.rot = Math.sin(k * Math.PI * 2) * .5; }); }
+        for (let s = 0; s < shakes; s++) { await sleep(320); sfx('shake'); await tween(400, k => { V.ball.rot = Math.sin(k * Math.PI * 2) * .5; }); }
         await sleep(350);
         if (caught) {
-          V.ball.dim = true; V.ball.stars = [[-18, -14], [16, -18], [22, 4], [-22, 6]];
+          sfx('catch'); V.ball.dim = true; V.ball.stars = [[-18, -14], [16, -18], [22, 4], [-22, 6]];
           await say(`Caught it! ${f.name} was caught!`);
           B.caught = { species: f.id, level: f.lv, hp: f.hp, exp: f.exp };
           return true;
         }
-        V.ball = null;
+        V.ball = null; sfx('breakout');
         await tween(240, k => { V.foe.alpha = k; V.foe.scale = .2 + .8 * k; });
         await say(['It broke free!', 'So close… it broke free!', 'Argh! It was almost caught!'][shakes]);
         return false;
@@ -393,7 +395,7 @@
           }
         } else if (a.type === 'run') {
           B.runs++;
-          if (me.spe >= f.spe || Math.random() * 100 < set.runChance + (B.runs - 1) * 20) { await say('Got away safely!'); return finish('ran'); }
+          if (me.spe >= f.spe || Math.random() * 100 < set.runChance + (B.runs - 1) * 20) { sfx('run'); await say('Got away safely!'); return finish('ran'); }
           await say('Couldn’t get away!');
           await useMove('foe', foeMove(f, me));
         } else if (a.type === 'switch') {
@@ -405,7 +407,7 @@
           B.used[it.id] = (B.used[it.id] || 0) + 1;
           if (it.ball) { if (await throwBall(it)) return finish('caught'); }
           else {
-            const before = me.hp; me.hp = Math.min(me.maxhp, me.hp + it.heal);
+            const before = me.hp; me.hp = Math.min(me.maxhp, me.hp + it.heal); sfx('heal');
             await say(`You used a ${it.name}.`, 300); await hpTo('me', before);
             await say(`${me.name} got back ${me.hp - before} HP.`);
           }
@@ -438,6 +440,7 @@
 
       function finish(outcome) {
         if (B.over) return; B.over = true; busy = true;
+        if (PP.Audio) { if (outcome === 'won' || outcome === 'beat' || outcome === 'caught') { PP.Audio.stop(); sfx('victory'); } else if (outcome === 'lost') { PP.Audio.stop(); sfx('lose'); } }
         // write the battle back onto the player's Pokémon
         party.forEach(m => { m.ref.hp = m.hp >= m.maxhp ? null : Math.max(0, m.hp); m.ref.exp = m.exp; m.ref.level = m.lv; });
         const f = foe();

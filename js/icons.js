@@ -11,6 +11,7 @@ PP.ICONS = {
   cart: '<path d="M3 4h2.2l2 10.5h10.6L20 7.5H6.3"/><circle cx="9" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/>',
   apple: '<path d="M12 7.5c-1.2-1.6-4-2-5.5-.2C5 9 5 12.5 6.8 16c1.5 3 3.5 4.3 5.2 3.3 1.7 1 3.7-.3 5.2-3.3C19 12.5 19 9 17.5 7.3 16 5.5 13.2 5.9 12 7.5z"/><path d="M12 7.5c0-2 .8-3.5 2.5-4.5"/>',
   heart: '<path d="M12 20s-7-4.3-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.7-7 10-7 10z"/>',
+  music: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
   bolt: '<path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/>',
   drop: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
   moon: '<path d="M19.5 14.5A8 8 0 1 1 9.5 4.5a6.5 6.5 0 0 0 10 10z"/>',
@@ -50,6 +51,6 @@ PP.ICONS = {
   megaphone: '<path d="M4 10v4h3l8 4V6l-8 4z"/><path d="M18.5 9.5a3.5 3.5 0 0 1 0 5"/>',
 };
 // icons offered in the admin's "Icon" dropdowns
-PP.ICON_CHOICES = ['apple', 'berry', 'candy', 'heart', 'star', 'bolt', 'moon', 'drop', 'sparkle', 'egg', 'box', 'coin', 'gem', 'flag', 'pin', 'compass', 'bag', 'paw', 'pokeball', 'cup'];
+PP.ICON_CHOICES = ['apple', 'berry', 'candy', 'heart', 'star', 'bolt', 'moon', 'drop', 'sparkle', 'egg', 'box', 'coin', 'gem', 'flag', 'pin', 'compass', 'bag', 'paw', 'pokeball', 'cup', 'music'];
 PP.icon = (name, cls) =>
   `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PP.ICONS[name] || PP.ICONS.box}</svg>`;

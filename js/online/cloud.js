@@ -12,48 +12,70 @@ window.PP = window.PP || {};
 (function () {
   'use strict';
   const CFG = PP.FIREBASE_CONFIG;
+  const PAGE = document.body.dataset.page || 'game';
   const waiting = [];
-  let ready = !CFG;
-  /** run fn once the player is signed in and synced (straight away when offline) */
+  let ready = false;
+  /** run fn once the player is signed in and synced (offline: once they press Start) */
   PP.whenReady = fn => { if (ready) fn(); else waiting.push(fn); };
   const Cloud = PP.Cloud = { on: !!CFG, user: null, admin: false, db: null, claimName: async () => null, signOut() {}, flush() {} };
-  if (!CFG) return;
+  const go = () => { gateEl.hidden = true; ready = true; waiting.splice(0).forEach(fn => fn()); };
+  const S = PP.store, KEYS = S.KEYS, esc = PP.esc;
 
-  const S = PP.store, KEYS = S.KEYS, OWNER_KEY = 'pp2.uid';
-  const SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
-  const PAGE = document.body.dataset.page || 'game';
-  const DEVICE = Math.random().toString(36).slice(2, 10);   // tells this tab's writes from other devices'
-  const SAVE_EVERY = 20000;                                   // at most one cloud save write per 20 s
-  const nameKey = n => encodeURIComponent(String(n).trim().toLowerCase());
-  const esc = PP.esc;
-  let db, auth, uid, saveTimer = null, lastPushed = '';
-
-  // ---------------- the sign-in screen ----------------
+  // ---------------- the title / sign-in screen ----------------
+  // In the game it sits inside the phone frame (#app) with the home background and the starters.
+  const host = PAGE === 'game' && document.getElementById('app') || document.body;
   const gateEl = document.createElement('div');
-  gateEl.className = 'gate';
-  document.body.appendChild(gateEl);
+  gateEl.className = 'gate' + (host === document.body ? ' gate-full' : '');
+  host.appendChild(gateEl);
+  const look = (() => {
+    try {
+      const d = S.loadData(), bg = d.backgrounds.find(b => b.id === d.settings.homeBackground);
+      const faces = d.pokemon.filter(p => p.starter).slice(0, 3).map(p => PP.Sprite && PP.Sprite.portrait(p.folder)).filter(Boolean);
+      return { bg: bg && bg.image, faces };
+    } catch (e) { return { faces: [] }; }
+  })();
+  // a full URL: inside a CSS variable a relative path would be read from css/, not from the page
+  if (look.bg) gateEl.style.setProperty('--gate-bg', `url("${new URL(encodeURI(look.bg), location.href).href}")`);
   function gate(state, text) {
     const u = Cloud.user;
-    const out = u ? `<button class="gate-link" data-gate="out">Use a different Google account</button>` : '';
+    const other = u ? `<button class="gate-link" data-gate="out">Use a different Google account</button>` : '';
+    const google = `<button class="gate-btn" data-gate="in"><span class="g-logo" aria-hidden="true"></span>Sign in with Google</button>`;
     const body = {
-      busy: `<p class="gate-msg">${esc(text || 'Loading…')}</p>`,
-      signin: `<p class="gate-msg">Sign in with Google to play and keep your progress.</p>
-        <button class="gate-btn" data-gate="in"><span class="g-logo">G</span>Sign in with Google</button>${text ? `<p class="gate-err">${esc(text)}</p>` : ''}`,
+      busy: `<p class="gate-msg"><span class="gate-spin" aria-hidden="true"></span>${esc(text || 'Loading…')}</p>`,
+      start: `<button class="gate-btn gate-play" data-gate="play">Start your journey</button>
+        <p class="gate-note">Playing offline: your progress is saved on this device.</p>`,
+      signin: `${google}<p class="gate-note">Sign in to start your journey. Your progress is saved to your Google account.</p>${text ? `<p class="gate-err">${esc(text)}</p>` : ''}`,
       denied: `<p class="gate-msg"><b>${esc(u && u.email)}</b> isn’t on the friends list yet.</p>
-        <p class="gate-sub">Ask the owner to add this email in Admin → Online, then reload.</p>${out}`,
+        <p class="gate-note">Ask the owner to add this email, then reload.</p>${other}`,
       notadmin: `<p class="gate-msg"><b>${esc(u && u.email)}</b> can play, but can’t open the admin.</p>
-        <a class="gate-btn" href="index.html">Open the game</a>${out}`,
-      error: `<p class="gate-msg">${esc(text || 'Something went wrong.')}</p><button class="gate-btn" data-gate="reload">Try again</button>${out}`,
+        <a class="gate-btn" href="index.html">Open the game</a>${other}`,
+      error: `<p class="gate-msg">${esc(text || 'Something went wrong.')}</p><button class="gate-btn" data-gate="reload">Try again</button>${other}`,
     }[state];
-    gateEl.innerHTML = `<div class="gate-card"><div class="gate-title">Pocket Pals${PAGE === 'admin' ? ' Admin' : ''}</div>${body}</div>`;
+    const faces = look.faces.length && PAGE === 'game' ? `<div class="gate-faces">${look.faces.map(f => `<img src="${f}" alt="">`).join('')}</div>` : '';
+    gateEl.innerHTML = `<div class="gate-hero">${faces}
+        <h1 class="gate-title">Pocket Pals${PAGE === 'admin' ? ' <small>Admin</small>' : ''}</h1>
+        <p class="gate-tag">Raise, battle and catch with your friends.</p></div>
+      <div class="gate-panel">${body}</div>`;
     gateEl.hidden = false;
   }
   gateEl.addEventListener('click', e => {
     const b = e.target.closest('[data-gate]'); if (!b) return;
+    if (b.dataset.gate === 'play') go();
     if (b.dataset.gate === 'in') signIn();
     if (b.dataset.gate === 'out') auth.signOut().then(() => location.reload());
     if (b.dataset.gate === 'reload') location.reload();
   });
+
+  // offline: the game shows the title screen; the admin opens straight away
+  if (!CFG) { if (PAGE === 'game') gate('start'); else go(); return; }
+
+  const OWNER_KEY = 'pp2.uid';
+  const SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+  const DEVICE = Math.random().toString(36).slice(2, 10);   // tells this tab's writes from other devices'
+  const SAVE_EVERY = 20000;                                   // at most one cloud save write per 20 s
+  const nameKey = n => encodeURIComponent(String(n).trim().toLowerCase());
+  let db, auth, uid, saveTimer = null, lastPushed = '';
+
   function signIn() {
     const p = new firebase.auth.GoogleAuthProvider();
     p.setCustomParameters({ prompt: 'select_account' });
@@ -104,9 +126,7 @@ window.PP = window.PP || {};
 
     if (PAGE === 'game') await checkName();
     hookWrites(); listen();
-    gateEl.hidden = true;
-    ready = true;
-    waiting.splice(0).forEach(fn => fn());
+    go();
     if (upload) pushSave(true);
   }
 
