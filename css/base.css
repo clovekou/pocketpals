@@ -124,3 +124,18 @@ h1, h2, h3, p { margin: 0; }
 /* space kept free at the bottom of the screen: the home indicator, plus Safari's floating toolbar on iPhone */
 :root { --sab: env(safe-area-inset-bottom, 0px); }
 :root.ios-browser { --sab: max(env(safe-area-inset-bottom, 0px), 64px); }
+
+/* ---------- "a new version is ready" bar (js/update.js) ---------- */
+.update-bar { position: absolute; left: 12px; right: 12px; top: calc(env(safe-area-inset-top) + 10px); z-index: 1100; display: flex; align-items: center; gap: 10px;
+  padding: 10px 10px 10px 14px; border-radius: 16px; background: #1d2433; color: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  transform: translateY(-140%); opacity: 0; transition: transform .3s ease, opacity .3s ease; font-family: inherit; }
+body > .update-bar { position: fixed; max-width: 520px; margin: 0 auto; }
+.update-bar.in { transform: none; opacity: 1; }
+.update-dot { width: 10px; height: 10px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 4px rgba(74, 222, 128, .2); flex: none; }
+.update-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.update-text b { font-size: 13.5px; }
+.update-text small { font-size: 12px; opacity: .7; }
+.update-later { color: #fff; opacity: .7; font: inherit; font-size: 13px; padding: 6px; background: none; border: 0; cursor: pointer; }
+.update-go { height: 34px; padding: 0 14px; border-radius: 11px; border: 0; background: #ffd34d; color: #3a2400; font: inherit; font-weight: 750; font-size: 13.5px; cursor: pointer; }
+.update-go:disabled { opacity: .7; }
+@media (prefers-reduced-motion: reduce) { .update-bar { transition: none; } }
