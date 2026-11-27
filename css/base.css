@@ -89,7 +89,7 @@ h1, h2, h3, p { margin: 0; }
 
 /* ---------- title / sign-in screen (js/online/cloud.js) ---------- */
 .gate { position: absolute; inset: 0; z-index: 1000; display: flex; flex-direction: column; justify-content: space-between;
-  padding: calc(env(safe-area-inset-top) + 28px) 22px calc(env(safe-area-inset-bottom) + 28px); color: #fff; text-align: center; font-family: inherit;
+  padding: calc(env(safe-area-inset-top) + 28px) 22px calc(var(--sab) + 28px); color: #fff; text-align: center; font-family: inherit;
   background: linear-gradient(180deg, rgba(10, 16, 34, 0) 0%, rgba(10, 16, 34, 0) 58%, rgba(10, 16, 34, .55) 78%, rgba(10, 16, 34, .9) 100%),
     var(--gate-bg, radial-gradient(circle at 50% 30%, #2b3f7a, #10162a 70%)) center bottom / cover no-repeat, #10162a; }
 .gate.gate-full { position: fixed; }
@@ -120,3 +120,7 @@ h1, h2, h3, p { margin: 0; }
 @keyframes gate-bob { 50% { transform: translateY(-5px); } }
 @keyframes gate-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .gate-hero, .gate-panel, .gate-faces img { animation: none; } }
+
+/* space kept free at the bottom of the screen: the home indicator, plus Safari's floating toolbar on iPhone */
+:root { --sab: env(safe-area-inset-bottom, 0px); }
+:root.ios-browser { --sab: max(env(safe-area-inset-bottom, 0px), 64px); }
