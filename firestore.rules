@@ -1,7 +1,7 @@
 rules_version = '2';
 // Pocket Pals security rules. Paste into Firebase console → Firestore Database → Rules → Publish.
 // 1. Replace OWNER_EMAIL below with the Google account that owns the game (lower case).
-// 2. That account can always open the admin. Add friends in Admin → Online.
+// 2. That account can always open the admin. Anyone signed in with Google can play; more admins can be added in Admin → Online.
 service cloud.firestore {
   match /databases/{db}/documents {
     function signedIn() { return request.auth != null && request.auth.token.email_verified == true; }
@@ -10,7 +10,7 @@ service cloud.firestore {
     function accessDoc() { return /databases/$(db)/documents/config/access; }
     function listed(field) { return exists(accessDoc()) && email() in get(accessDoc()).data[field]; }
     function admin() { return owner() || (signedIn() && listed('admins')); }
-    function player() { return admin() || (signedIn() && listed('players')); }
+    function player() { return signedIn(); }                      // anyone with a Google account can play
     function me(uid) { return request.auth.uid == uid; }
 
     // game data (settings + content): every player reads it, only admins change it

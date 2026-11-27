@@ -45,8 +45,8 @@ window.PP = window.PP || {};
       start: `<button class="gate-btn gate-play" data-gate="play">Start your journey</button>
         <p class="gate-note">Playing offline: your progress is saved on this device.</p>`,
       signin: `${google}<p class="gate-note">Sign in to start your journey. Your progress is saved to your Google account.</p>${text ? `<p class="gate-err">${esc(text)}</p>` : ''}`,
-      denied: `<p class="gate-msg"><b>${esc(u && u.email)}</b> isn’t on the friends list yet.</p>
-        <p class="gate-note">Ask the owner to add this email, then reload.</p>${other}`,
+      denied: `<p class="gate-msg">The game can’t be reached right now.</p>
+        <p class="gate-note">The game’s online setup isn’t finished yet. Try again later.</p>${other}`,
       notadmin: `<p class="gate-msg"><b>${esc(u && u.email)}</b> can play, but can’t open the admin.</p>
         <a class="gate-btn" href="index.html">Open the game</a>${other}`,
       error: `<p class="gate-msg">${esc(text || 'Something went wrong.')}</p><button class="gate-btn" data-gate="reload">Try again</button>${other}`,

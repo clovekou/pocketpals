@@ -134,7 +134,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
           <li>Reload. The game and the admin will ask you to sign in with Google.</li>
         </ol>`));
       setTimeout(loadOnline, 0);
-      return page('Online', `Signed in as ${C.user.email}. Only the emails below can sign in.`, '', `
+      return page('Online', `Signed in as ${C.user.email}. Anyone with a Google account can play.`, '', `
         <div id="onlineBody"><div class="empty-note">Loading…</div></div>`);
     },
     overview() {
@@ -399,20 +399,17 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         + panel(`Players (${players.length})`, players.length ? `<table class="tbl"><thead><tr><th>Player</th><th class="r">Trainer Lv</th><th class="r">Badges</th><th class="r">Caught</th><th class="r">Last played</th></tr></thead><tbody>
           ${played.map(p => `<tr><td>${dot(p)} ${name(p)}</td><td class="r tnum">${p.level || 1}</td><td class="r tnum">${p.badges || 0}</td><td class="r tnum">${p.caught || 0}</td>
             <td class="r">${online(p) ? '<b style="color:#16a34a">Online now</b>' : when(p.lastActive || p.at)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-note">Nobody has played online yet.</div>', { flush: true })
-        + panel('Who can sign in', `<div class="form-grid">
-          <div class="f"><label class="fl" for="accPlayers">Players (one email per line)</label>
-            <textarea class="inp" id="accPlayers" rows="8" style="height:auto;padding:8px 11px" spellcheck="false">${esc(acc.players.join('\n'))}</textarea>
-            <p class="fh">Friends' Google account emails. Anyone not listed sees “not on the friends list”.</p></div>
+        + panel('Admins', `<div class="form-grid">
           <div class="f"><label class="fl" for="accAdmins">Admins (one email per line)</label>
             <textarea class="inp" id="accAdmins" rows="4" style="height:auto;padding:8px 11px" spellcheck="false">${esc(acc.admins.join('\n'))}</textarea>
             <p class="fh">Can open this admin and change the game for everyone. The owner email in firestore.rules always can.</p></div>
-        </div><div style="margin-top:12px">${btn('Save the list', 'access-save', { cls: 'btn-primary', icon: 'check' })}</div>`);
+        </div><div style="margin-top:12px">${btn('Save admins', 'access-save', { cls: 'btn-primary', icon: 'check' })}</div>`);
     } catch (e) { el.innerHTML = `<div class="empty-note">Couldn’t load the online data (${esc(e.code || e.message)}).</div>`; }
   }
   async function saveAccess() {
     const list = id => [...new Set(document.getElementById(id).value.split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(x => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)))];
-    const acc = { players: list('accPlayers'), admins: list('accAdmins') };
-    try { await PP.Cloud.setAccess(acc); S.log('admin', `Online access list saved: ${acc.players.length} players, ${acc.admins.length} admins`); toast('Access list saved'); loadOnline(); }
+    const acc = { players: [], admins: list('accAdmins') };            // anyone with a Google account can play
+    try { await PP.Cloud.setAccess(acc); S.log('admin', `Admin list saved: ${acc.admins.length} admins`); toast('Admins saved'); loadOnline(); }
     catch (e) { toast('Couldn’t save: ' + (e.code || e.message)); }
   }
   function render() {

@@ -33,7 +33,7 @@ html, body { height: 100%; }
   box-shadow: 0 8px 22px rgba(16, 24, 40, .18); transition: opacity .25s, transform .25s;
 }
 .battle .hud.gone { opacity: 0; transform: translateY(-6px); }
-.battle .hud.foe { top: 14px; left: 14px; }
+.battle .hud.foe { top: calc(14px + env(safe-area-inset-top)); left: 14px; }
 .battle .hud.me { bottom: 14px; right: 14px; }
 .battle .hud-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .battle .hud-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -52,7 +52,7 @@ html, body { height: 100%; }
 .battle .hud-party span { width: 9px; height: 9px; border-radius: 50%; background: #e03b3b; box-shadow: inset 0 -3px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .25); }
 .battle .hud-party span.out { background: var(--border-strong); }
 .battle .trainer-chip {
-  position: absolute; top: 14px; right: 14px; z-index: 2; display: flex; align-items: center; gap: 8px;
+  position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; z-index: 2; display: flex; align-items: center; gap: 8px;
   padding: 6px 10px 6px 6px; border-radius: 99px; font-size: 12.5px; font-weight: 700;
   background: color-mix(in srgb, var(--surface) 82%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
 }
