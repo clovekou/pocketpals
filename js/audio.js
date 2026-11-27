@@ -262,10 +262,14 @@ window.PP = window.PP || {};
 
   // ---------------- sound effects ----------------
   const SFX = {
-    hit: t => { hit(sfxBus, t, { freq: 900, dur: .12, vol: .5 }); tone(sfxBus, 320, t, .12, { wave: 'square', slide: 90, vol: .25 }); },
-    weak: t => { hit(sfxBus, t, { type: 'lowpass', freq: 900, dur: .1, vol: .45 }); tone(sfxBus, 200, t, .1, { wave: 'triangle', slide: 80, vol: .25 }); },
-    super: t => { hit(sfxBus, t, { freq: 700, dur: .16, vol: .65 }); tone(sfxBus, 420, t, .1, { wave: 'square', slide: 120, vol: .3 }); tone(sfxBus, 620, t + .1, .14, { wave: 'square', slide: 160, vol: .28 }); },
-    crit: t => { hit(sfxBus, t, { freq: 2500, dur: .08, vol: .5 }); tone(sfxBus, 980, t, .06, { wave: 'square', vol: .2 }); SFX.hit(t + .06); },
+    // impacts, in the style of the old handheld battles: a crunchy noise burst over a falling thump
+    hit: t => { hit(sfxBus, t, { type: 'highpass', freq: 1800, dur: .05, vol: .5 }); hit(sfxBus, t + .02, { type: 'lowpass', freq: 2400, dur: .16, vol: .7 });
+      tone(sfxBus, 190, t, .14, { wave: 'square', slide: 55, vol: .3, cutoff: 1400 }); },
+    weak: t => { hit(sfxBus, t, { type: 'lowpass', freq: 700, dur: .12, vol: .55 }); tone(sfxBus, 140, t, .1, { wave: 'triangle', slide: 60, vol: .28 }); },
+    super: t => { [0, .09].forEach((d, k) => { hit(sfxBus, t + d, { type: 'highpass', freq: 1400, dur: .06, vol: .6 }); hit(sfxBus, t + d + .02, { type: 'lowpass', freq: 3000, dur: .2, vol: .85 });
+        tone(sfxBus, 240 - k * 40, t + d, .16, { wave: 'square', slide: 45, vol: .34, cutoff: 1600 }); });
+      tone(sfxBus, 1500, t + .2, .12, { wave: 'pulse25', slide: 400, vol: .12 }); },
+    crit: t => { hit(sfxBus, t, { type: 'highpass', freq: 5000, dur: .04, vol: .6 }); tone(sfxBus, 1760, t, .05, { wave: 'pulse12', vol: .18 }); SFX.hit(t + .05); },
     miss: t => tone(sfxBus, 700, t, .18, { wave: 'sine', slide: 1400, vol: .15 }),
     faint: t => tone(sfxBus, 620, t, .7, { wave: 'square', slide: 70, vol: .22, release: .3 }),
     throw: t => tone(sfxBus, 300, t, .32, { wave: 'sine', slide: 1000, vol: .22 }),
@@ -275,8 +279,17 @@ window.PP = window.PP || {};
     heal: t => [72, 76, 79, 84, 88].forEach((m, k) => tone(sfxBus, hz(m), t + k * .07, .22, { wave: 'sine', vol: .18 })),
     levelup: t => [[67, 0], [72, .1], [76, .2], [79, .3], [84, .4]].forEach(([m, d]) => tone(sfxBus, hz(m), t + d, d === .4 ? .4 : .1, { wave: 'pulse50', vol: .16 })),
     run: t => [0, .08, .16].forEach(d => tone(sfxBus, 500, t + d, .07, { wave: 'triangle', slide: 900, vol: .14 })),
-    victory: t => [[72, 0, .12], [72, .14, .12], [72, .28, .12], [76, .42, .5], [74, .95, .12], [76, 1.1, .12], [79, 1.25, .7]]
-      .forEach(([m, d, l]) => { tone(sfxBus, hz(m), t + d, l, { wave: 'pulse25', vol: .15 }); tone(sfxBus, hz(m - 12), t + d, l, { wave: 'triangle', vol: .16 }); }),
+    // a short, bright fanfare (original), lead + harmony + bass, ending on a sparkle
+    victory: t => {
+      const lead = [[67, 0, .1], [72, .12, .1], [76, .24, .1], [79, .36, .34], [77, .74, .1], [76, .86, .1], [77, .98, .1], [79, 1.1, .7]];
+      const harm = [[64, 0, .1], [67, .12, .1], [72, .24, .1], [76, .36, .34], [74, .74, .1], [72, .86, .1], [74, .98, .1], [76, 1.1, .7]];
+      const bass = [[48, 0, .3], [55, .36, .34], [53, .74, .34], [48, 1.1, .7]];
+      lead.forEach(([m, d, l]) => tone(sfxBus, hz(m), t + d, l, { wave: 'pulse25', vol: .14, vib: l > .3 }));
+      harm.forEach(([m, d, l]) => tone(sfxBus, hz(m), t + d, l, { wave: 'pulse12', vol: .07 }));
+      bass.forEach(([m, d, l]) => tone(sfxBus, hz(m), t + d, l, { wave: 'triangle', vol: .22 }));
+      [84, 88, 91, 96].forEach((m, k) => tone(sfxBus, hz(m), t + 1.5 + k * .05, .18, { wave: 'sine', vol: .07 }));
+      [0, .36, .74].forEach(d => hit(sfxBus, t + d, { type: 'bandpass', freq: 6000, dur: .05, vol: .12 }));
+    },
     lose: t => [[67, 0], [63, .25], [60, .5]].forEach(([m, d]) => tone(sfxBus, hz(m), t + d, .3, { wave: 'triangle', vol: .2 })),
     coin: t => { tone(sfxBus, 988, t, .07, { wave: 'square', vol: .12 }); tone(sfxBus, 1319, t + .07, .2, { wave: 'square', vol: .12 }); },
     alert: t => { tone(sfxBus, hz(84), t, .08, { wave: 'square', vol: .14 }); tone(sfxBus, hz(91), t + .09, .16, { wave: 'square', vol: .14 }); },
@@ -342,7 +355,31 @@ window.PP = window.PP || {};
     setTimeout(() => bus.disconnect(), 500);
   }
 
+  // ---------------- attack sounds, one flavour per type (played as the attacker lunges) ----------------
+  const MOVE = {
+    normal: t => hit(sfxBus, t, { type: 'bandpass', freq: 1800, dur: .18, vol: .35 }),
+    fire: t => { for (let k = 0; k < 6; k++) hit(sfxBus, t + k * .04, { type: 'bandpass', freq: 900 + k * 300, dur: .05, vol: .3 }); tone(sfxBus, 180, t, .3, { wave: 'sawtooth', slide: 520, vol: .1, cutoff: 1200 }); },
+    water: t => [0, .05, .11, .16, .22].forEach((d, k) => tone(sfxBus, 500 + ((k * 7) % 5) * 140, t + d, .07, { wave: 'sine', slide: 1300, vol: .16 })),
+    grass: t => { [0, .07, .14].forEach(d => hit(sfxBus, t + d, { type: 'highpass', freq: 3500, dur: .06, vol: .3 })); tone(sfxBus, 900, t + .05, .16, { wave: 'triangle', slide: 1500, vol: .1 }); },
+    electric: t => { for (let k = 0; k < 7; k++) tone(sfxBus, k % 2 ? 1800 : 900, t + k * .035, .035, { wave: 'square', vol: .1 }); hit(sfxBus, t, { type: 'highpass', freq: 4000, dur: .25, vol: .18 }); },
+    ice: t => [96, 100, 103, 108].forEach((m, k) => tone(sfxBus, hz(m), t + k * .045, .14, { wave: 'sine', vol: .09 })),
+    fighting: t => { hit(sfxBus, t, { type: 'bandpass', freq: 900, dur: .1, vol: .45 }); hit(sfxBus, t + .1, { type: 'bandpass', freq: 1200, dur: .1, vol: .45 }); },
+    poison: t => tone(sfxBus, 420, t, .3, { wave: 'square', slide: 150, vol: .1, cutoff: 900, vib: true }),
+    ground: t => hit(sfxBus, t, { type: 'lowpass', freq: 300, dur: .4, vol: .9 }),
+    flying: t => { hit(sfxBus, t, { type: 'bandpass', freq: 1200, dur: .14, vol: .3 }); hit(sfxBus, t + .12, { type: 'bandpass', freq: 2400, dur: .14, vol: .3 }); },
+    psychic: t => tone(sfxBus, 300, t, .35, { wave: 'sine', slide: 900, vol: .14, vib: true }),
+    bug: t => tone(sfxBus, 260, t, .28, { wave: 'sawtooth', slide: 320, vol: .08, cutoff: 1800, vib: true }),
+    rock: t => [0, .07, .14].forEach(d => hit(sfxBus, t + d, { type: 'lowpass', freq: 600, dur: .08, vol: .6 })),
+    ghost: t => tone(sfxBus, 700, t, .4, { wave: 'sine', slide: 220, vol: .14, vib: true }),
+    dragon: t => tone(sfxBus, 110, t, .35, { wave: 'sawtooth', slide: 70, vol: .14, cutoff: 900 }),
+    dark: t => hit(sfxBus, t, { type: 'bandpass', freq: 700, dur: .22, vol: .4 }),
+    steel: t => { tone(sfxBus, 2100, t, .2, { wave: 'square', vol: .07, cutoff: 5000 }); tone(sfxBus, 3150, t, .2, { wave: 'sine', vol: .06 }); hit(sfxBus, t, { type: 'highpass', freq: 6000, dur: .05, vol: .3 }); },
+    fairy: t => [88, 91, 95, 100].forEach((m, k) => tone(sfxBus, hz(m), t + k * .05, .16, { wave: 'sine', vol: .08 })),
+  };
+
   PP.Audio = {
+    /** the short sound for a move of this type */
+    move(type) { if (!sfxAllowed() || !ensure()) return; const f = MOVE[type] || MOVE.normal; try { f(ctx.currentTime + .01); } catch (e) {} },
     cry,
     PIECES,
     configure(d) {

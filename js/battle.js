@@ -314,7 +314,7 @@
         const att = side === 'me' ? cur() : foe(), def = side === 'me' ? foe() : cur(), other = side === 'me' ? 'foe' : 'me';
         if (side === 'me') mv.left--;
         await say(`${label(side, true)} used ${mv.name}!`, 200);
-        play(side, 'Attack');
+        play(side, 'Attack'); if (PP.Audio && PP.Audio.move) PP.Audio.move(mv.type);
         const lx = side === 'me' ? 22 : -22, ly = side === 'me' ? -10 : 8;
         await tween(150, k => { V[side].dx = lx * k; V[side].dy = ly * k; });
         await tween(150, k => { V[side].dx = lx * (1 - k); V[side].dy = ly * (1 - k); });
