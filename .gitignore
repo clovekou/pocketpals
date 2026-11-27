@@ -1,0 +1,6 @@
+.DS_Store
+_*.html
+__pycache__/
+*.pyc
+.firebase/
+firebase-debug.log

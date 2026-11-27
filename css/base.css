@@ -1,0 +1,88 @@
+/* Shared design tokens + basics for the game and the admin. Light and dark. */
+:root {
+  --page: #eceef2;
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-2: #f3f4f7;
+  --border: #e4e6eb;
+  --border-strong: #cfd3da;
+  --text: #15171c;
+  --text-2: #5a606c;
+  --text-3: #8d929c;
+  --accent: #3b6ef5;
+  --accent-ink: #ffffff;
+  --accent-soft: #ebf0fe;
+  --good: #2f9e6b;
+  --warn: #e8590c;
+  --bad: #e03b3b;
+  --gold: #e9a100;
+  --gem: #7c5cf0;
+  --track: #eceef2;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 2px 8px rgba(16, 24, 40, .05);
+  --shadow-lg: 0 18px 48px rgba(16, 24, 40, .16);
+  --r-sm: 10px;
+  --r: 14px;
+  --r-lg: 20px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0b0c0f; --bg: #121419; --surface: #1a1d23; --surface-2: #22252c;
+    --border: #2b2f37; --border-strong: #3a3f49;
+    --text: #eceef2; --text-2: #a4aab5; --text-3: #737a86;
+    --accent: #6b93ff; --accent-ink: #0b1020; --accent-soft: #1e2a4a;
+    --track: #2a2e36;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3); --shadow-lg: 0 18px 48px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0b0c0f; --bg: #121419; --surface: #1a1d23; --surface-2: #22252c;
+  --border: #2b2f37; --border-strong: #3a3f49;
+  --text: #eceef2; --text-2: #a4aab5; --text-3: #737a86;
+  --accent: #6b93ff; --accent-ink: #0b1020; --accent-soft: #1e2a4a;
+  --track: #2a2e36;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3); --shadow-lg: 0 18px 48px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+a.btn { text-decoration: none; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.4;
+  -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+button:disabled { cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3, p { margin: 0; }
+.num, .tnum { font-variant-numeric: tabular-nums; }
+
+.ic { width: 20px; height: 20px; flex: none; display: block; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 34px; padding: 0 14px; border-radius: var(--r-sm); font-size: 13px; font-weight: 600;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text); white-space: nowrap;
+  transition: background .15s, border-color .15s, opacity .15s, transform .1s;
+}
+.btn:hover:not(:disabled) { border-color: var(--border-strong); }
+.btn:active:not(:disabled) { transform: scale(.97); }
+.btn:disabled { opacity: .45; }
+.btn .ic { width: 16px; height: 16px; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn-primary:hover:not(:disabled) { border-color: var(--accent); filter: brightness(1.05); }
+.btn-danger { color: var(--bad); }
+.btn-danger:hover:not(:disabled) { border-color: var(--bad); }
+.btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+
+.bar { height: 6px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--c, var(--accent)); transition: width .4s ease; }
+
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); display: inline-block; flex: none; }
+.dot.on { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 20%, transparent); }

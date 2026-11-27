@@ -1,0 +1,80 @@
+// Lumera region: story content (chapters 1–3). Original characters, places and teams.
+// These are the default rows for Admin → Content → Chapters / Badges / Trainers / Story steps,
+// and everything here can be edited there. See docs/region-outline.md for the whole region.
+//
+// Trainer teams: "species:level, species:level". "counter:7" = the starter strong against yours, at Lv 7.
+// Story text: one line per text box; "Name: words" shows who is speaking (default: the Professor).
+window.PP = window.PP || {};
+PP.LUMERA = {
+  chapters: [
+    { id: 'c1', number: 1, region: 'lumera', title: 'The Beginning', description: 'A partner, a Pokédex and a rival. Your journey starts in Hearthmoor Village.', rewardCoins: 200, rewardGems: 5, rewardExp: 100 },
+    { id: 'c2', number: 2, region: 'lumera', title: 'First Steps', description: 'Out on Fernway Trail: your first catch, your first trainers, and the road to Brookhaven Town.', rewardCoins: 350, rewardGems: 5, rewardExp: 200 },
+    { id: 'c3', number: 3, region: 'lumera', title: 'The Sprout Badge', description: 'Through Mossglow Woods to Bloomhaven City, where Gym Leader Fenna waits.', rewardCoins: 750, rewardGems: 10, rewardExp: 500 },
+  ],
+  badges: [
+    { id: 'sprout', name: 'Sprout Badge', color: '#5fb544', description: 'From Fenna, Bloomhaven Gym (Grass).' },
+    { id: 'tide', name: 'Tide Badge', color: '#4f8ff0', description: 'From Caspian, Marisport Gym (Water).' },
+    { id: 'spark', name: 'Spark Badge', color: '#d9ad00', description: 'From Rhett, Harbor Gym (Electric).' },
+    { id: 'ridge', name: 'Ridge Badge', color: '#b49d3c', description: 'From Garnet, Grandvale Gym (Rock).' },
+    { id: 'mind', name: 'Mind Badge', color: '#f85888', description: 'From Celeste, Aurelle Gym (Psychic).' },
+    { id: 'venom', name: 'Venom Badge', color: '#a040a0', description: 'From Nyx, Thornbury Gym (Poison).' },
+    { id: 'blaze', name: 'Blaze Badge', color: '#ee7f30', description: 'From Ignatius, Cinder Gym (Fire).' },
+    { id: 'quake', name: 'Quake Badge', color: '#c9a046', description: 'From Thorne, Ironvale Gym (Ground).' },
+  ],
+  trainers: [
+    { id: 'kai-1', trainerClass: 'Rival', name: 'Kai', kind: 'rival', area: 'hearthmoor', team: 'counter:5', prize: 100, badge: 'none', mustWin: true, noSuperEffective: true, background: 'auto',
+      intro: 'Kai: Hold on, {name}! Hazel gave you a Pokémon too?\nKai: Then let’s see whose partner is stronger!', defeat: 'Kai: No way… Fine, I’ll train harder. See you out there!' },
+    { id: 'theo', trainerClass: 'Bug Fan', name: 'Theo', kind: 'trainer', area: 'fernway-trail', team: 'caterpie:3, weedle:3', prize: 60, badge: 'none', background: 'auto',
+      intro: 'Theo: My bugs have been training all morning. Battle me!', defeat: 'Theo: Aw, they need more practice.' },
+    { id: 'mira', trainerClass: 'Camper', name: 'Mira', kind: 'trainer', area: 'fernway-trail', team: 'rattata:4, pidgey:4', prize: 80, badge: 'none', background: 'auto',
+      intro: 'Mira: You look new around here. Let me show you how it’s done!', defeat: 'Mira: Okay, okay, you’re not that new.' },
+    { id: 'lena', trainerClass: 'Picnicker', name: 'Lena', kind: 'trainer', area: 'willowbank-path', team: 'oddish:5, bellsprout:5', prize: 100, badge: 'none', background: 'auto',
+      intro: 'Lena: The flowers here are lovely, and so are my Pokémon. Battle?', defeat: 'Lena: You battle beautifully!' },
+    { id: 'kai-2', trainerClass: 'Rival', name: 'Kai', kind: 'rival', area: 'willowbank-path', team: 'pidgey:6, counter:7', prize: 280, badge: 'none', background: 'auto',
+      intro: 'Kai: There you are! I caught a new Pokémon. Round two!', defeat: 'Kai: Again?! I’m heading to Bloomhaven to win my first badge. Don’t fall behind!' },
+    { id: 'owen', trainerClass: 'Bug Fan', name: 'Owen', kind: 'trainer', area: 'mossglow-woods', team: 'metapod:6, kakuna:6, paras:7', prize: 120, badge: 'none', background: 'auto',
+      intro: 'Owen: Shh! You’ll scare the bugs. Unless… you want to battle?', defeat: 'Owen: My cocoons need to evolve first.' },
+    { id: 'pip', trainerClass: 'Bug Fan', name: 'Pip', kind: 'trainer', area: 'mossglow-woods', team: 'weedle:7, paras:8', prize: 140, badge: 'none', background: 'auto',
+      intro: 'Pip: These woods are MY bug-catching spot!', defeat: 'Pip: Fine, you can share the spot.' },
+    { id: 'basil', trainerClass: 'Gym Gardener', name: 'Basil', kind: 'trainer', area: 'bloomhaven', team: 'bellsprout:9, oddish:9', prize: 180, badge: 'none', background: 'battle-gym',
+      intro: 'Basil: To reach Fenna, you’ll have to get through her garden first!', defeat: 'Basil: You’re ready. Fenna is waiting.' },
+    { id: 'fenna', trainerClass: 'Gym Leader', name: 'Fenna', kind: 'gym', area: 'bloomhaven', team: 'oddish:10, weepinbell:12', prize: 1200, badge: 'sprout', background: 'auto',
+      intro: 'Fenna: Welcome to Bloomhaven Gym. My Grass Pokémon grow strong in the sun.\nFenna: Show me what you and your partner have learned!', defeat: 'Fenna: What a battle! You’ve earned the Sprout Badge.' },
+  ],
+  // in order. types: scene (talk), arrive (reach and unlock an area), heal, trainer (must win), wild (set encounter)
+  steps: [
+    { id: 'c1-pokedex', chapter: 'c1', type: 'scene', title: 'A gift from the Professor', area: 'hearthmoor', rewardItem: 'poke-ball', rewardQty: 3,
+      text: 'Before you set off, {name}, take this Pokédex. It records every Pokémon you meet.\nAnd here are a few more Poké Balls. Weaken a wild Pokémon first, then throw one!' },
+    { id: 'c1-kai', chapter: 'c1', type: 'trainer', title: 'Battle your rival Kai', area: 'hearthmoor', trainer: 'kai-1' },
+    { id: 'c1-route', chapter: 'c1', type: 'arrive', title: 'Head out to Fernway Trail', area: 'fernway-trail',
+      text: 'Fernway Trail is just outside the village. Wild Pokémon live in its tall grass, so stay alert!' },
+
+    { id: 'c2-first-catch', chapter: 'c2', type: 'wild', title: 'Catch your first Pokémon', area: 'fernway-trail', species: 'pidgey', level: 3, mustCatch: true,
+      text: 'A wild Pokémon! Lower its HP with an attack, then open your Bag and throw a Poké Ball.' },
+    { id: 'c2-theo', chapter: 'c2', type: 'trainer', title: 'Beat Bug Fan Theo', area: 'fernway-trail', trainer: 'theo' },
+    { id: 'c2-mira', chapter: 'c2', type: 'trainer', title: 'Beat Camper Mira', area: 'fernway-trail', trainer: 'mira' },
+    { id: 'c2-brookhaven', chapter: 'c2', type: 'arrive', title: 'Arrive in Brookhaven Town', area: 'brookhaven', rewardCoins: 100,
+      text: 'You arrived in Brookhaven Town. The riverside market is busy today.' },
+    { id: 'c2-healer', chapter: 'c2', type: 'heal', title: 'Rest at the healer’s', area: 'brookhaven',
+      text: 'Healer Rosa: Your Pokémon look tired. Let me take care of them!\nHealer Rosa: All better! Come back whenever they need rest.' },
+    { id: 'c2-willowbank', chapter: 'c2', type: 'arrive', title: 'Explore Willowbank Path', area: 'willowbank-path',
+      text: 'Willow trees line the path west of Brookhaven. New Pokémon live in the flowers here.' },
+    { id: 'c2-lena', chapter: 'c2', type: 'trainer', title: 'Beat Picnicker Lena', area: 'willowbank-path', trainer: 'lena' },
+    { id: 'c2-kai', chapter: 'c2', type: 'trainer', title: 'Kai wants a rematch', area: 'willowbank-path', trainer: 'kai-2' },
+
+    { id: 'c3-mossglow', chapter: 'c3', type: 'arrive', title: 'Enter Mossglow Woods', area: 'mossglow-woods',
+      text: 'The trees of Mossglow Woods glow softly. Bug Pokémon rustle in every bush.' },
+    { id: 'c3-owen', chapter: 'c3', type: 'trainer', title: 'Beat Bug Fan Owen', area: 'mossglow-woods', trainer: 'owen' },
+    { id: 'c3-pikachu', chapter: 'c3', type: 'wild', title: 'A spark in the woods', area: 'mossglow-woods', species: 'pikachu', level: 6, mustCatch: false,
+      text: 'Something yellow darts between the trees… a wild Pikachu! Catch it if you can.' },
+    { id: 'c3-pip', chapter: 'c3', type: 'trainer', title: 'Beat Bug Fan Pip', area: 'mossglow-woods', trainer: 'pip' },
+    { id: 'c3-bloomhaven', chapter: 'c3', type: 'arrive', title: 'Arrive in Bloomhaven City', area: 'bloomhaven', rewardCoins: 150,
+      text: 'Bloomhaven City, the city of gardens. The Gym is the big greenhouse in the middle of town.' },
+    { id: 'c3-rest', chapter: 'c3', type: 'heal', title: 'Get ready for the Gym', area: 'bloomhaven',
+      text: 'Healer Rosa’s sister runs the healer’s here. Your team is fully rested.' },
+    { id: 'c3-basil', chapter: 'c3', type: 'trainer', title: 'Get past Gym Gardener Basil', area: 'bloomhaven', trainer: 'basil' },
+    { id: 'c3-fenna', chapter: 'c3', type: 'trainer', title: 'Defeat Gym Leader Fenna', area: 'bloomhaven', trainer: 'fenna' },
+    { id: 'c3-call', chapter: 'c3', type: 'scene', title: 'A call from the Professor', area: 'bloomhaven',
+      text: 'The Sprout Badge! I knew you could do it, {name}.\nThe road east leads to Cobble Pass. Some odd people have been seen near the caverns there… be careful.' },
+  ],
+};

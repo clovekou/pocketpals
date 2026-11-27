@@ -1,0 +1,130 @@
+/* Battle preview: a phone-sized battle screen in the same style as the game. */
+html, body { height: 100%; }
+.battle { position: relative; display: flex; flex-direction: column; overflow: hidden; height: 100%; background: var(--bg); }
+/* in the game: the battle covers the whole app */
+.battle-layer { position: absolute; inset: 0; z-index: 80; animation: bfade .25s ease; }
+/* preview page: a phone frame with a small toolbar */
+.pv-frame { position: relative; display: flex; flex-direction: column; overflow: hidden; max-width: 440px; height: 100vh; height: 100dvh; margin: 0 auto; background: var(--bg); }
+.pv-root { position: relative; flex: 1; min-height: 0; }
+@media (min-width: 520px)  {
+  body.preview { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .pv-frame { width: 420px; height: min(880px, calc(100dvh - 48px)); border-radius: 32px; border: 1px solid var(--border); box-shadow: var(--shadow-lg); }
+}
+
+/* preview controls (not part of the real battle screen) */
+.preview-bar { display: flex; align-items: center; gap: 6px; padding: calc(10px + env(safe-area-inset-top)) 14px 10px; background: var(--surface); border-bottom: 1px solid var(--border); z-index: 3; }
+.pv-title { font-weight: 700; font-size: 13px; margin-right: auto; }
+.pv-btn { height: 28px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface-2); font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.pv-btn.on { background: var(--text); color: var(--surface); border-color: var(--text); }
+
+/* ---------- arena ---------- */
+.battle .arena { position: relative; flex: 1; min-height: 360px; overflow: hidden; }
+.battle .arena-bg {
+  position: absolute; inset: 0; background: url("../assets/backgrounds/sakura-meadow.jpg") center 72% / cover no-repeat;
+  filter: saturate(1.05);
+}
+.battle .arena-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(10, 14, 30, .25), rgba(10, 14, 30, 0) 30%, rgba(10, 14, 30, .1) 70%, rgba(10, 14, 30, .35)); }
+.battle .field { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.battle .hud {
+  position: absolute; width: 196px; padding: 10px 12px 11px; border-radius: 16px; z-index: 2;
+  background: color-mix(in srgb, var(--surface) 82%, transparent); border: 1px solid rgba(255, 255, 255, .4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: 0 8px 22px rgba(16, 24, 40, .18); transition: opacity .25s, transform .25s;
+}
+.battle .hud.gone { opacity: 0; transform: translateY(-6px); }
+.battle .hud.foe { top: 14px; left: 14px; }
+.battle .hud.me { bottom: 14px; right: 14px; }
+.battle .hud-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.battle .hud-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.battle .hud-lv { font-size: 12px; font-weight: 700; color: var(--text-2); }
+.battle .hud-hp { display: flex; align-items: center; gap: 6px; }
+.battle .hp-tag { font-size: 10px; font-weight: 800; color: var(--gold); letter-spacing: .04em; }
+.battle .hp { flex: 1; height: 7px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.battle .hp > i { display: block; height: 100%; width: 100%; border-radius: inherit; background: #2fb36b; transition: width .6s ease, background-color .3s; }
+.battle .hp > i.mid { background: #e9a100; }
+.battle .hp > i.low { background: #e03b3b; }
+.battle .hud-num { text-align: right; font-size: 12.5px; font-weight: 700; margin-top: 4px; color: var(--text-2); }
+.battle .exp { height: 3px; margin-top: 6px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.battle .exp > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .8s ease; }
+.battle .hud-party { display: flex; gap: 4px; margin-top: 7px; }
+.battle .hud-party:empty { display: none; }
+.battle .hud-party span { width: 9px; height: 9px; border-radius: 50%; background: #e03b3b; box-shadow: inset 0 -3px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .25); }
+.battle .hud-party span.out { background: var(--border-strong); }
+.battle .trainer-chip {
+  position: absolute; top: 14px; right: 14px; z-index: 2; display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px 6px 6px; border-radius: 99px; font-size: 12.5px; font-weight: 700;
+  background: color-mix(in srgb, var(--surface) 82%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+}
+.battle .trainer-chip .ic { width: 22px; height: 22px; padding: 3px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); box-sizing: content-box; }
+
+/* ---------- console ---------- */
+.battle .console { position: relative; height: 252px; flex: none; background: var(--surface); border-top: 1px solid var(--border); padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
+.battle .msg { position: relative; min-height: 64px; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); cursor: pointer; }
+.battle .msg p { font-size: 15.5px; line-height: 1.45; font-weight: 550; }
+.battle .msg-next { position: absolute; right: 12px; bottom: 8px; font-size: 10px; color: var(--accent); animation: bbob 1s ease-in-out infinite; }
+@keyframes bbob  { 50%  { transform: translateY(3px); } }
+.battle .console.full .msg { flex: 1; }
+.battle .menu { flex: 1; display: flex; flex-direction: column; margin-top: 10px; min-height: 0; }
+
+.battle .cmds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; }
+.battle .cmd {
+  display: flex; align-items: center; gap: 10px; padding: 0 14px; border-radius: 14px; font-size: 15px; font-weight: 700;
+  border: 1px solid var(--border); background: var(--surface); text-align: left; transition: transform .1s, border-color .15s;
+}
+.battle .cmd:active:not(:disabled) { transform: scale(.97); }
+.battle .cmd:hover:not(:disabled) { border-color: var(--c); }
+.battle .cmd .cmd-ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; color: #fff; background: var(--c); flex: none; }
+.battle .cmd .cmd-ic .ic { width: 20px; height: 20px; stroke-width: 2.1; }
+.battle .cmd small { display: block; font-size: 11px; font-weight: 600; color: var(--text-3); margin-top: 1px; }
+.battle .cmd:disabled { opacity: .45; }
+
+.battle .moves { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; }
+.battle .move {
+  display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 8px 12px; border-radius: 14px; text-align: left;
+  border: 1px solid var(--border); border-left: 4px solid var(--c); background: var(--surface); transition: transform .1s;
+}
+.battle .move:active:not(:disabled) { transform: scale(.97); }
+.battle .move b { font-size: 14.5px; }
+.battle .move-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.battle .type { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 10.5px; font-weight: 800; letter-spacing: .03em; color: #fff; background: var(--c); text-transform: uppercase; }
+.battle .pp { font-size: 11.5px; font-weight: 700; color: var(--text-2); }
+.battle .move:disabled { opacity: .4; }
+.battle .menu-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+.battle .back { height: 30px; padding: 0 14px; border-radius: 99px; font-size: 12.5px; font-weight: 700; background: var(--surface-2); border: 1px solid var(--border); }
+.battle .hint { font-size: 12px; color: var(--text-3); }
+
+.battle .list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.battle .tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.battle .tab { height: 28px; padding: 0 12px; border-radius: 99px; font-size: 12.5px; font-weight: 700; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); }
+.battle .tab.on { background: var(--text); color: var(--surface); border-color: var(--text); }
+.battle .li {
+  display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 12px; text-align: left;
+  border: 1px solid var(--border); background: var(--surface);
+}
+.battle .li:disabled { opacity: .45; }
+.battle .li-ic { width: 32px; height: 32px; display: grid; place-items: center; flex: none; }
+.battle .li img { width: 32px; height: 32px; image-rendering: pixelated; flex: none; }
+.battle .li .li-main { flex: 1; min-width: 0; }
+.battle .li b { font-size: 13.5px; }
+.battle .li small { display: block; font-size: 11.5px; color: var(--text-3); }
+.battle .li .hp { margin-top: 4px; height: 5px; }
+.battle .li .qty { font-size: 12.5px; font-weight: 700; color: var(--text-2); }
+.battle .li.on { border-color: var(--accent); background: var(--accent-soft); }
+
+/* ---------- result ---------- */
+.battle .result { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; background: rgba(8, 10, 18, .55); animation: bfade .25s ease; }
+.battle .result-card { width: 100%; max-width: 320px; padding: 22px 20px 18px; border-radius: 22px; background: var(--surface); text-align: center; box-shadow: var(--shadow-lg); animation: brise .3s cubic-bezier(.2, 1.2, .4, 1); }
+.battle .result-icon { width: 64px; height: 64px; margin: 0 auto 10px; display: grid; place-items: center; border-radius: 20px; background: var(--accent-soft); color: var(--accent); }
+.battle .result-icon img { width: 48px; height: 48px; image-rendering: pixelated; }
+.battle .result-icon .ic { width: 30px; height: 30px; }
+.battle .result h2 { font-size: 20px; margin-bottom: 4px; }
+.battle .result p { color: var(--text-2); font-size: 13.5px; }
+.battle .result-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
+@keyframes bfade  { from  { opacity: 0; } }
+@keyframes brise  { from  { transform: translateY(16px) scale(.97); opacity: 0; } }
+@media (prefers-reduced-motion: reduce)  { .battle .msg-next { animation: none; } }
+
+/* sub-menus (moves, bag, party) use the whole console */
+.battle .console.sub .msg { display: none; }
+.battle .console.sub .menu { margin-top: 0; }
