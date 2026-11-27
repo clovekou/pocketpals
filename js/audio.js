@@ -101,10 +101,20 @@ window.PP = window.PP || {};
       const ch = noise.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
       levels();
     }
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx.state === 'suspended' && !document.hidden) ctx.resume();
     if (want && (!cur || cur.id !== want)) start(want);    // music asked for before sound was allowed
     return ctx;
   }
+  // closing, switching away from or locking the game pauses all sound; coming back carries on
+  function sleepAll(away) {
+    if (!ctx) return;
+    if (away) { if (ctx.state === 'running') ctx.suspend().catch(() => {}); if (cur && cur.el) cur.el.pause(); }
+    else { ctx.resume().catch(() => {}); if (cur && cur.el && musicAllowed()) cur.el.play().catch(() => {}); }
+  }
+  document.addEventListener('visibilitychange', () => sleepAll(document.hidden));
+  window.addEventListener('pagehide', () => sleepAll(true));
+  window.addEventListener('pageshow', () => { if (!document.hidden) sleepAll(false); });
+  window.addEventListener('blur', () => { if (document.hidden) sleepAll(true); });
   // browsers only allow sound after a tap or key press: start then
   const unlock = () => { ensure(); };
   ['pointerdown', 'keydown', 'touchend', 'click'].forEach(ev => window.addEventListener(ev, unlock, { capture: true, passive: true }));
@@ -209,7 +219,7 @@ window.PP = window.PP || {};
     const src = ctx.createMediaElementSource(el), g = ctx.createGain();
     g.gain.value = tr.volume / 100; src.connect(g); g.connect(musicBus);
     el.play().catch(() => {});
-    return { id, stop() { g.gain.setTargetAtTime(0, ctx.currentTime, .15); setTimeout(() => { el.pause(); g.disconnect(); }, 600); } };
+    return { id, el, stop() { g.gain.setTargetAtTime(0, ctx.currentTime, .15); setTimeout(() => { el.pause(); g.disconnect(); }, 600); } };
   }
   function synthTrack(id, tr) {
     const P = PIECES[tr.style]; if (!P) return null;
@@ -414,6 +424,8 @@ window.PP = window.PP || {};
       if (ctx) start(want);                         // before the first tap, unlock() starts it
     },
     stop() { want = null; stopMusic(); },
+    /** 'running', 'suspended' (paused while away) or 'none' */
+    state: () => ctx ? ctx.state : 'none',
     /** the track playing now (or null) */
     current: () => cur && cur.id,
     sfx(name) { if (!sfxAllowed() || !ensure() || !SFX[name]) return; try { SFX[name](ctx.currentTime + .01); } catch (e) {} },
