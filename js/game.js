@@ -343,6 +343,8 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
   function resumeWalk() {
     if (!walk) return;
     $('walkLayer').hidden = false;
+    const f = $('walkFlash'); if (f) f.classList.remove('go');        // the flash into the battle ends on white: clear it
+    const b = $('walkBang'); if (b) b.hidden = true;
     walk.paused = false; walk.last = performance.now();
   }
   function finishWalk() {
