@@ -41,7 +41,7 @@ Wake Bell (wakes sleeping Pokémon blocking a road), Truth Lens (see ghosts), Fe
 Manor Key, Helix Fossil, Dome Fossil.
 
 ## In the game
-All 18 chapters are playable: 43 areas with custom encounter tables, 9 rival battles, 8 Gym Leaders, Team Eclipse
+All 18 chapters are playable: 43 areas with custom encounter tables, about 220 trainers (4–6 per route, cave and sea area, 2 Gym Trainers before every Gym Leader), 9 rival battles, 8 Gym Leaders, Team Eclipse
 (grunts, Admin Lyra, Director Vex), the Summit Four and Champion Kai, and the legendary birds and Mewtwo as set
 encounters. Content lives in `js/content-lumera.js` and is editable in the admin (Chapters, Areas, Encounter tables,
 Trainers, Story steps).

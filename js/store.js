@@ -225,6 +225,10 @@
     const ids = (list, m) => Object.fromEntries(Object.entries(m && typeof m === 'object' ? m : {}).filter(([id]) => (list || []).some(x => x.id === id)).map(([id, t]) => [id, Number(t) || Date.now()]));
     const rs = raw.story || {};
     out.story = { done: ids(d.storySteps, rs.done), chapters: ids(d.chapters, rs.chapters) };   // step/chapter id → when finished
+    // story steps added later in front of where the player already is count as done (nobody is sent back)
+    const order = (d.storySteps || []).filter(st => st.enabled).map(st => st.id);
+    let far = -1; order.forEach((id, i) => { if (out.story.done[id]) far = i; });
+    for (let i = 0; i < far; i++) if (!out.story.done[order[i]]) out.story.done[order[i]] = 1;
     out.badges = ids(d.badges, raw.badges);
     out.beaten = ids(d.trainers, raw.beaten);
     const rdy = raw.daily && typeof raw.daily === 'object' ? raw.daily : {};

@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 18,
+  contentVersion: 19,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
