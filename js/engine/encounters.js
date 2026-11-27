@@ -4,7 +4,7 @@
 window.PP = window.PP || {};
 (function () {
   'use strict';
-  const METHOD_FOR = { cave: 'cave', water: 'surf', hideout: 'cave' };       // other environments walk through grass
+  const METHOD_FOR = { cave: 'cave', water: 'surf', underwater: 'surf', hideout: 'cave' };       // other environments walk through grass
 
   /** the table used when exploring an area normally (cave areas use cave tables, and so on) */
   function tableFor(d, area, method) {

@@ -102,6 +102,14 @@ recently (with their Google email, visible only to admins) and who is online.
 - **Daily** quests start over every day. **Game settings → Time & needs** sets the reset hour and how many daily quests
   are picked each day (0 = all). **Admin → Player** shows each quest's progress and has a **New day** button.
 
+## Walking explore
+Exploring an area (Explore → Wild battles) sends your partner walking left to right across the area's wide path
+picture. Along the way a few places (Game settings → Exploring: *Places a wild Pokémon can appear*) each roll the
+area's wild-Pokémon chance; on a hit a "!" pops up, the screen flashes and a wild battle starts, then the walk carries
+on. Reaching the end finishes the explore and gives the area's rewards. Path pictures are 3:1 images in
+`assets/backgrounds/path-*.jpg`; each area picks one (Content → Areas → *Explore path picture*) or uses the one for its
+environment. Walk speed, stops and the most battles per walk are under Game settings → Exploring.
+
 ## Battles
 - `js/battle.js` is the battle screen and rules, used by the game and by `battle-preview.html` (a sandbox with a
   sample team that never touches your save).

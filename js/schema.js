@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 14,
+  contentVersion: 15,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -83,6 +83,16 @@ PP.SCHEMA = {
     { id: 'explore', label: 'Exploring', icon: 'compass', desc: 'Rules shared by every area. Each area has its own rewards under Content → Areas.', fields: [
       { key: 'exploreNeed', label: 'Need that exploring uses up', type: 'select', optionsFrom: 'needs', def: 'energy' },
       { key: 'exploreCooldownSec', label: 'Wait between explores', type: 'int', min: 0, max: 86400, def: 5, suffix: 'sec' },
+      { key: 'walkOn', label: 'Walk along a path when exploring', type: 'bool', def: true, help: 'Your partner walks across the area’s path picture; wild Pokémon jump out on the way, and reaching the end finishes the explore.' },
+      { key: 'walkSeconds', label: 'Time to walk the whole path', type: 'int', min: 4, max: 120, def: 16, suffix: 'sec' },
+      { key: 'walkStops', label: 'Places a wild Pokémon can appear', type: 'int', min: 1, max: 10, def: 4, help: 'Each place rolls the area’s wild Pokémon chance.' },
+      { key: 'walkMaxBattles', label: 'Most wild battles per walk', type: 'int', min: 0, max: 10, def: 2 },
+      { key: 'walkBgLand', label: 'Path picture: grassland & routes', type: 'select', optionsFrom: 'backgrounds', def: 'path-forest' },
+      { key: 'walkBgForest', label: 'Path picture: forests', type: 'select', optionsFrom: 'backgrounds', def: 'path-deep-forest' },
+      { key: 'walkBgCave', label: 'Path picture: caves', type: 'select', optionsFrom: 'backgrounds', def: 'path-cave' },
+      { key: 'walkBgWater', label: 'Path picture: beaches, water & islands', type: 'select', optionsFrom: 'backgrounds', def: 'path-ocean' },
+      { key: 'walkBgUnderwater', label: 'Path picture: underwater', type: 'select', optionsFrom: 'backgrounds', def: 'path-underwater' },
+      { key: 'walkBgHideout', label: 'Path picture: buildings & villain hideouts', type: 'select', optionsFrom: 'backgrounds', def: 'path-lab' },
     ] },
     { id: 'story', label: 'Welcome & tutorial', icon: 'megaphone', desc: 'What the Professor says to new players. One line per paragraph; each line is a new text box. You can use {name}, {pokemon}, {professor}, {coins} and {gems}. Tutorial steps are under Content → Tutorial.', fields: [
       { key: 'professorName', label: 'Professor’s name', type: 'text', def: 'Professor Kou', max: 30 },
@@ -187,6 +197,12 @@ PP.SCHEMA = {
         { id: 'battle-hideout', name: 'Battle: Villain hideout', image: 'assets/backgrounds/battle-hideout.jpg', position: 'bottom', dim: 0 },
         { id: 'battle-gym', name: 'Battle: Gym arena', image: 'assets/backgrounds/battle-gym.jpg', position: 'bottom', dim: 0 },
         { id: 'battle-ocean', name: 'Battle: Open ocean', image: 'assets/backgrounds/battle-ocean.jpg', position: 'bottom', dim: 0 },
+        { id: 'path-forest', name: 'Path: Forest trail', image: 'assets/backgrounds/path-forest.jpg', position: 'bottom', dim: 0 },
+        { id: 'path-deep-forest', name: 'Path: Deep forest', image: 'assets/backgrounds/path-deep-forest.jpg', position: 'bottom', dim: 0 },
+        { id: 'path-cave', name: 'Path: Crystal cave', image: 'assets/backgrounds/path-cave.jpg', position: 'bottom', dim: 0 },
+        { id: 'path-ocean', name: 'Path: Seaside', image: 'assets/backgrounds/path-ocean.jpg', position: 'bottom', dim: 0 },
+        { id: 'path-underwater', name: 'Path: Underwater', image: 'assets/backgrounds/path-underwater.jpg', position: 'bottom', dim: 0 },
+        { id: 'path-lab', name: 'Path: Lab / hideout', image: 'assets/backgrounds/path-lab.jpg', position: 'bottom', dim: 0 },
         { id: 'sakura-meadow', name: 'Sakura Meadow', image: 'assets/backgrounds/sakura-meadow.jpg', position: 'bottom', dim: 0 },
       ],
     },
@@ -417,7 +433,7 @@ PP.SCHEMA = {
         { key: 'id', label: 'ID', type: 'id' },
         { key: 'name', label: 'Name', type: 'text', def: 'New area', max: 28 },
         { key: 'region', label: 'Region', type: 'select', optionsFrom: 'regions', def: 'lumera' },
-        { key: 'environment', label: 'Environment', type: 'select', def: 'grassland', options: [['town', 'Town'], ['grassland', 'Grassland'], ['forest', 'Forest'], ['cave', 'Cave'], ['water', 'Water'], ['mountain', 'Mountain'], ['building', 'Building'], ['hideout', 'Villain hideout'], ['island', 'Island']], help: 'Towns have no wild Pokémon. Caves use cave tables; others use walking tables.' },
+        { key: 'environment', label: 'Environment', type: 'select', def: 'grassland', options: [['town', 'Town'], ['grassland', 'Grassland'], ['forest', 'Forest'], ['cave', 'Cave'], ['water', 'Water'], ['mountain', 'Mountain'], ['building', 'Building'], ['hideout', 'Villain hideout'], ['island', 'Island'], ['underwater', 'Underwater']], help: 'Towns have no wild Pokémon. Caves use cave tables; others use walking tables.' },
         { key: 'enabled', label: 'Open', type: 'bool', def: true },
         { key: 'description', label: 'Description', type: 'textarea', def: '', max: 160 },
         { key: 'thumbnail', label: 'Card picture', type: 'image', def: '', max: 300, help: 'Optional picture for the area card. Empty shows a coloured card for its environment.' },
@@ -436,6 +452,7 @@ PP.SCHEMA = {
         { key: 'exp', label: 'EXP per explore', type: 'int', min: 0, max: 1e6, def: 10 },
         { key: 'background', label: 'Background while here', type: 'select', optionsFrom: 'backgroundsOrHome', def: 'home', help: 'Shown on the home screen while this is the current area.' },
         { key: 'battleBackground', label: 'Battle background', type: 'select', optionsFrom: 'backgroundsOrAuto', def: 'auto', help: 'Auto picks land, cave or water from Game settings → Battles, by the area’s environment.' },
+        { key: 'walkBackground', label: 'Explore path picture', type: 'select', optionsFrom: 'backgroundsOrAuto', def: 'auto', help: 'The wide picture your Pokémon walks across. Auto picks one by environment (Game settings → Exploring).' },
       ],
       // Lumera, chapters 1–3 (original region; see docs/region-outline.md)
       rows: [

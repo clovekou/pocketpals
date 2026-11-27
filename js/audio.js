@@ -279,6 +279,7 @@ window.PP = window.PP || {};
       .forEach(([m, d, l]) => { tone(sfxBus, hz(m), t + d, l, { wave: 'pulse25', vol: .15 }); tone(sfxBus, hz(m - 12), t + d, l, { wave: 'triangle', vol: .16 }); }),
     lose: t => [[67, 0], [63, .25], [60, .5]].forEach(([m, d]) => tone(sfxBus, hz(m), t + d, .3, { wave: 'triangle', vol: .2 })),
     coin: t => { tone(sfxBus, 988, t, .07, { wave: 'square', vol: .12 }); tone(sfxBus, 1319, t + .07, .2, { wave: 'square', vol: .12 }); },
+    alert: t => { tone(sfxBus, hz(84), t, .08, { wave: 'square', vol: .14 }); tone(sfxBus, hz(91), t + .09, .16, { wave: 'square', vol: .14 }); },
     click: t => tone(sfxBus, 1200, t, .03, { wave: 'square', vol: .06 }),
     pop: t => tone(sfxBus, 500, t, .09, { wave: 'sine', slide: 900, vol: .16 }),
   };

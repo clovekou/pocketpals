@@ -200,7 +200,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
   let exploring = false;
   function explore(l, force) {
     const s = data.settings, t = Date.now();
-    if (exploring) return;                                           // one trip at a time
+    if (exploring || walk) return;                                   // one trip at a time
     if (!s.exploreOpen) return toast('Exploring is closed right now');
     if (!PP.Progress.unlocked(data, save, l)) return toast(`Locked: ${PP.Progress.missingText(data, save, l) || 'closed'}`);
     const cd = save.cooldowns.__explore || 0;
@@ -218,39 +218,154 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       if (s.exploreCooldownSec) save.cooldowns.__explore = t + s.exploreCooldownSec * 1000;
       if (first) { S.log('explore', `Discovered ${l.name}`); toast(`Discovered ${l.name}!`); }
       if (l.environment === 'town') save.lastTown = l.id;
+      // walk along the area's path: wild Pokémon jump out on the way, the end of the path finishes the trip
+      if (s.walkOn && l.environment !== 'town' && petSpecies()) { commit(); startWalk(l, planWalk(l, force)); return; }
       const enc = PP.Encounters.roll(data, force ? Object.assign({}, l, { encounterChance: 100 }) : l);
-      const sp = enc && data.pokemon.find(p => p.id === enc.species);
-      if (sp) {
-        // a wild Pokémon instead of items. (Battling and catching it come in the next phase.)
-        const newDex = !save.dex.seen[sp.id];
-        save.dex.seen[sp.id] = save.dex.seen[sp.id] || t;
-        st.seen[sp.id] = (st.seen[sp.id] || 0) + 1;
-        save.stats.encounters++;
-        S.log('explore', `Explored ${l.name}: a wild ${sp.name} (Lv ${enc.level}) appeared` + (newDex ? ' (new Pokédex entry)' : ''));
-        bump('see:any');
-        bump('explore:any'); bump('explore:' + l.id);
-        gainExp(l.exp);
-        commit();
-        startBattle(l, [{ species: sp.id, level: enc.level }]);
-        return;
-      } else {
-        const lo = Math.min(l.coinsMin, l.coinsMax), hi = Math.max(l.coinsMin, l.coinsMax);
-        const coins = lo + Math.floor(Math.random() * (hi - lo + 1));
-        const gems = Math.random() * 100 < l.gemChance ? l.gemAmount : 0;
-        const drop = Math.random() * 100 < l.itemChance ? (l.dropItem === 'random' ? randomDrop() : itemOf(l.dropItem)) : null;
-        addCoins(coins); save.gems += gems; if (drop) addItem(drop.id, 1);
-        const parts = [`+${fmt(coins)} ${coinName()}`];
-        if (gems) parts.push(`+${fmt(gems)} ${gemName()}`);
-        if (drop) parts.push(drop.name);
-        if (l.exp) parts.push(`+${l.exp} EXP`);
-        S.log('explore', `Explored ${l.name}: ${parts.join(', ')}`);
-        lastExplore = { kind: 'loot', area: l.name, parts };
-      }
+      if (enc && meet(l, enc)) { commit(); startBattle(l, [{ species: enc.species, level: enc.level }]); return; }
+      const parts = exploreLoot(l);
+      lastExplore = { kind: 'loot', area: l.name, parts };
       bump('explore:any'); bump('explore:' + l.id);
       gainExp(l.exp);
       commit();
       react(s.emoExplore);
     } finally { exploring = false; }
+  }
+  /** a wild Pokémon appears: Pokédex, area records and quests */
+  function meet(l, enc) {
+    const sp = data.pokemon.find(p => p.id === enc.species); if (!sp) return false;
+    const st = save.areas[l.id] || (save.areas[l.id] = { explores: 0, seen: {} }), newDex = !save.dex.seen[sp.id];
+    save.dex.seen[sp.id] = save.dex.seen[sp.id] || Date.now();
+    st.seen[sp.id] = (st.seen[sp.id] || 0) + 1;
+    save.stats.encounters++;
+    S.log('explore', `Exploring ${l.name}: a wild ${sp.name} (Lv ${enc.level}) appeared` + (newDex ? ' (new Pokédex entry)' : ''));
+    bump('see:any');
+    return true;
+  }
+  /** the area's rewards for finishing a trip → text parts for the log and screens */
+  function exploreLoot(l) {
+    const lo = Math.min(l.coinsMin, l.coinsMax), hi = Math.max(l.coinsMin, l.coinsMax);
+    const coins = lo + Math.floor(Math.random() * (hi - lo + 1));
+    const gems = Math.random() * 100 < l.gemChance ? l.gemAmount : 0;
+    const drop = Math.random() * 100 < l.itemChance ? (l.dropItem === 'random' ? randomDrop() : itemOf(l.dropItem)) : null;
+    addCoins(coins); save.gems += gems; if (drop) addItem(drop.id, 1);
+    const parts = [`+${fmt(coins)} ${coinName()}`];
+    if (gems) parts.push(`+${fmt(gems)} ${gemName()}`);
+    if (drop) parts.push(drop.name);
+    if (l.exp) parts.push(`+${l.exp} EXP`);
+    S.log('explore', `Explored ${l.name}: ${parts.join(', ')}`);
+    return parts;
+  }
+
+  // ---------------- walking explore ----------------
+  let walk = null;
+  /** the wide path picture for an area (its own, or the one for its environment) */
+  function walkBg(l) {
+    const s = data.settings, env = l.environment, img = id => (data.backgrounds.find(b => b.id === id) || {}).image;
+    const id = l.walkBackground && l.walkBackground !== 'auto' ? l.walkBackground
+      : env === 'hideout' || env === 'building' ? s.walkBgHideout : env === 'cave' ? s.walkBgCave : env === 'forest' ? s.walkBgForest
+      : env === 'underwater' ? s.walkBgUnderwater : env === 'water' || env === 'island' ? s.walkBgWater : s.walkBgLand;
+    return img(id) || img(s.walkBgLand) || img('path-forest');
+  }
+  /** where on the path wild Pokémon will jump out (each place rolls the area's chance) */
+  function planWalk(l, force) {
+    const s = data.settings, stops = [];
+    if (!PP.Encounters.tableFor(data, l)) return stops;
+    for (let k = 0; k < s.walkStops && stops.length < s.walkMaxBattles; k++) {
+      const enc = PP.Encounters.roll(data, l);
+      if (enc) stops.push({ at: (k + 1) / (s.walkStops + 1), enc });
+    }
+    if (force && !stops.length) {
+      const enc = PP.Encounters.roll(data, Object.assign({}, l, { encounterChance: 100 }));
+      if (enc) stops.push({ at: (1 + Math.floor(Math.random() * s.walkStops)) / (s.walkStops + 1), enc });
+    }
+    return stops;
+  }
+  function startWalk(l, stops) {
+    const sp = petSpecies(), layer = $('walkLayer');
+    closeSheet(true); setCare(false);
+    layer.innerHTML = `<canvas class="walk-cv"></canvas>
+      <div class="walk-top"><div class="walk-area">${I('pin')}<span>${esc(l.name)}</span></div>
+        <div class="walk-prog"><i id="walkProg"></i></div><button class="walk-leave" data-do="walk-leave">Leave</button></div>
+      <div class="walk-bang" id="walkBang" hidden>!</div><div class="walk-flash" id="walkFlash"></div><div class="walk-done" id="walkDone" hidden></div>`;
+    layer.hidden = false;
+    const im = new Image(); im.src = encodeURI(walkBg(l) || '');
+    PP.Sprite.preload(sp.folder, ['Walk', 'Idle']);
+    walk = { l, stops, next: 0, p: 0, paused: false, done: false, im, sp, last: performance.now(), battles: 0 };
+    nextWalkFrame();
+  }
+  /** next frame of the walk (a timer backs up the frame loop, which some phones and browsers slow down) */
+  function nextWalkFrame() {
+    let fired = false;
+    const go = () => { if (fired) return; fired = true; walkFrame(performance.now()); };
+    requestAnimationFrame(go); setTimeout(go, 50);
+  }
+  function walkFrame(now) {
+    const w = walk; if (!w) return;
+    const cv = $('walkLayer').querySelector('.walk-cv'); if (!cv) return;
+    const dt = Math.min(.05, (now - w.last) / 1000); w.last = now;
+    if (!w.paused && !w.done && $('battleLayer').hidden) {
+      w.p = Math.min(1, w.p + dt / data.settings.walkSeconds);
+      const stop = w.stops[w.next];
+      if (stop && w.p >= stop.at) { w.p = stop.at; w.next++; walkEncounter(stop); }
+      else if (w.p >= 1) finishWalk();
+    }
+    const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    const cw = Math.round(r.width * dpr), ch = Math.round(r.height * dpr);
+    if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+    const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.imageSmoothingEnabled = false;
+    const H = r.height, im = w.im;
+    if (im.complete && im.naturalWidth) {
+      const sc = Math.max(H / im.naturalHeight, r.width * 1.6 / im.naturalWidth), W = im.naturalWidth * sc, IH = im.naturalHeight * sc;
+      const x0 = r.width * .14, x1 = W - r.width * .14, wx = x0 + (x1 - x0) * w.p;
+      const cam = Math.max(0, Math.min(W - r.width, wx - r.width * .42)), top = H - IH;
+      g.fillStyle = '#0b0f1a'; g.fillRect(0, 0, r.width, H);
+      g.drawImage(im, -cam, top, W, IH);
+      const walking = !w.paused && !w.done && $('battleLayer').hidden;
+      const size = (w.sp.size || 100) / 100, scale = Math.max(2, IH / 240) * size;
+      PP.Sprite.draw(g, w.sp.folder, { x: wx - cam, y: top + IH * .79, scale, t: now / 1000, anim: walking ? 'Walk' : 'Idle', dir: 'right' });
+      const b = $('walkBang'); if (b && !b.hidden) { b.style.left = (wx - cam) + 'px'; b.style.top = (top + IH * .79 - 30 * scale) + 'px'; }
+    } else { g.fillStyle = '#0b0f1a'; g.fillRect(0, 0, r.width, H); }
+    const pr = $('walkProg'); if (pr) pr.style.width = (w.p * 100) + '%';
+    nextWalkFrame();
+  }
+  function walkEncounter(stop) {
+    const w = walk; w.paused = true;
+    if (!canBattle() || !meet(w.l, stop.enc)) { w.paused = false; return; }
+    commit();
+    const b = $('walkBang'); b.hidden = false; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+    PP.Audio.sfx('alert');
+    setTimeout(() => {
+      const f = $('walkFlash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+      setTimeout(() => { b.hidden = true; w.battles++; startBattle(w.l, [{ species: stop.enc.species, level: stop.enc.level }], { walk: true }); }, 650);
+    }, 900);
+  }
+  /** after a battle on the path: keep walking from where it stopped */
+  function resumeWalk() {
+    if (!walk) return;
+    $('walkLayer').hidden = false;
+    walk.paused = false; walk.last = performance.now();
+  }
+  function finishWalk() {
+    const w = walk; if (!w || w.done) return;
+    w.done = true;
+    const parts = exploreLoot(w.l);
+    lastExplore = { kind: 'loot', area: w.l.name, parts };
+    bump('explore:any'); bump('explore:' + w.l.id);
+    gainExp(w.l.exp);
+    commit();
+    PP.Audio.sfx('coin');
+    const d = $('walkDone');
+    d.innerHTML = `<div class="walk-card"><div class="walk-card-ic">${I('flag')}</div><h3>Explore complete!</h3>
+      <p>You reached the end of ${esc(w.l.name)}${w.battles ? ` after ${w.battles} wild battle${w.battles === 1 ? '' : 's'}` : ''}.</p>
+      <div class="walk-loot">${parts.map(x => `<span>${esc(x)}</span>`).join('')}</div>
+      <button class="btn btn-primary" data-do="walk-close">Continue</button></div>`;
+    d.hidden = false;
+  }
+  function endWalk(open) {
+    walk = null;
+    const layer = $('walkLayer'); layer.hidden = true; layer.innerHTML = '';
+    react(data.settings.emoExplore);
+    if (open) { exploreTab = 'wild'; openSheet('explore'); }
   }
   const wallet = cur => (cur === 'gems' ? 'gems' : 'coins');
   const curName = cur => (cur === 'gems' ? gemName() : coinName());
@@ -598,7 +713,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       step: ctx.step ? ctx.step.id : '', trainer: trainer ? trainer.id : '' };            // a refresh resumes this battle
     persist();
     closeSheet(true); setCare(false);
-    battleCtx = { area, step: ctx.step || null, trainer };
+    battleCtx = { area, step: ctx.step || null, trainer, walk: !!ctx.walk };
     const layer = $('battleLayer');
     layer.hidden = false;
     const protect = !!(trainer && trainer.mustWin);
@@ -675,7 +790,9 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     lastExplore = t ? null : { kind: 'battle', area: area.name, outcome: r.outcome, name: foe.name, folder: foe.folder, level: r.foe.level };
     commit();
     if (r.outcome === 'caught') react(data.settings.emoLevel);
-    const finish = () => { if (stepDone) completeStep(step); else { exploreTab = step ? 'story' : exploreTab; openSheet('explore'); } };
+    const onPath = ctx.walk && walk;
+    if (onPath && r.outcome === 'lost') endWalk(false);           // sent back to town: the trip ends
+    const finish = () => { if (stepDone) completeStep(step); else if (onPath && r.outcome !== 'lost') resumeWalk(); else { exploreTab = step ? 'story' : exploreTab; openSheet('explore'); } };
     if (after.length) say(after, finish); else finish();
   }
   const linesOf2 = txt => String(txt || '').split('\n').map(x => x.trim()).filter(Boolean);
@@ -1544,6 +1661,8 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       case 'act': { const a = data.actions.find(x => x.id === id); if (a) doAction(a); break; }
       case 'sheet': openSheet(b.dataset.kind); break;
       case 'close': closeSheet(); break;
+      case 'walk-leave': if (walk && !walk.done && confirm('Head back now? You won’t get this trip’s rewards.')) { S.log('explore', `Left ${walk.l.name} early`); endWalk(true); } break;
+      case 'walk-close': endWalk(true); break;
       case 'friend': friendView = id || null; tradePicking = false; if (!friendView) closeChat(); renderSheet(); $('sheetBody').scrollTop = 0; break;
       case 'f-add': SO.sendRequest(id, b.dataset.name).then(() => toast('Friend request sent'), () => toast('Couldn’t send the request. Try again.')); break;
       case 'r-accept': { const r = SO.state.reqIn.find(x => x.id === id); if (r) SO.accept(r).then(() => toast(`You and ${r.fromName} are now friends!`), () => toast('Couldn’t accept. Try again.')); break; }
