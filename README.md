@@ -39,6 +39,16 @@ Setup (once):
 
 Keep the GitHub repository **private**: the game uses Pokémon names and art.
 
+### Friends (online)
+Players sign in with Google and choose a unique player name; friends find each other by that name in the
+**Friends** tab (requests, accept/decline). Friends show a green dot when online (seen in the last 3 minutes)
+and a grey dot when not, and can chat, trade Pokémon (the offered Pokémon is held by the trade until it is
+accepted, declined or taken back) and fight **live turn-based battles**: both players' screens run each turn
+with the same shared random numbers, so they always show the same battle; a player who stops answering for
+2 minutes loses. Friend battles never change your Pokémon. Code: `js/online/social.js` (data) and the Friends
+section of `js/game.js` (screens); permissions in `firestore.rules`. **Admin → Online** lists who joined
+recently (with their Google email, visible only to admins) and who is online.
+
 ## The rule: everything is adjustable from the admin
 1. **Describe it in `schema.js` first.** A new number goes in `settings`. A new kind of thing goes in
    `collections`, with its fields and default rows. Admin pages for it appear automatically.

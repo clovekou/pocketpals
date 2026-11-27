@@ -119,6 +119,10 @@
         const have = new Set(rows.map(r => r && r.id));
         rows = rows.concat(def[k].filter(r => !have.has(r.id)));
       }
+      // one-time removals of retired rows from older saved data
+      if (Array.isArray(raw[k])) (SC.rowRemovals || []).forEach(u => {
+        if (u.collection === k && (Number(raw.contentVersion) || 1) < u.v) rows = rows.filter(r => !(r && u.ids.includes(r.id)));
+      });
       if (Array.isArray(raw[k])) (SC.rowUpdates || []).forEach(u => {
         if (u.collection === k && (Number(raw.contentVersion) || 1) < u.v) rows = rows.map(r => r && u.ids.includes(r.id) ? Object.assign({}, r, u.set) : r);
       });
@@ -157,6 +161,7 @@
       stats: { explores: 0, coinsEarned: 0, encounters: 0 },
       story: { done: {}, chapters: {} }, badges: {}, beaten: {},
       daily: { day: '', ids: [] },     // today's daily quests (day key, picked quest ids)
+      tradesDone: {},                  // trade id → what this player already did with it (online trades)
       dex: { seen: {}, caught: {} },   // species id → time first seen / caught
       areas: {},                       // area id → { explores, seen: { species: count } }
       createdAt: t, lastTick: t,
@@ -223,6 +228,7 @@
     out.badges = ids(d.badges, raw.badges);
     out.beaten = ids(d.trainers, raw.beaten);
     const rdy = raw.daily && typeof raw.daily === 'object' ? raw.daily : {};
+    out.tradesDone = Object.fromEntries(Object.entries(raw.tradesDone && typeof raw.tradesDone === 'object' ? raw.tradesDone : {}).filter(([k, v]) => typeof v === 'string').slice(-300).map(([k, v]) => [String(k).slice(0, 40), v.slice(0, 12)]));
     out.daily = { day: String(rdy.day || '').slice(0, 10), ids: (Array.isArray(rdy.ids) ? rdy.ids : []).filter(id => d.quests.some(q => q.id === id)) };
     out.lastTown = d.locations.some(l => l.id === raw.lastTown) ? raw.lastTown : '';
     out.named = !!raw.named;

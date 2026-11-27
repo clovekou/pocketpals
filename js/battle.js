@@ -101,6 +101,11 @@
         <div class="result-actions"><button class="btn btn-primary" data-b="resultGo">Continue</button></div></div></div>
     </div>`;
 
+  // Friend battles (kind 'pvp'): o.pvp = { side: 'a' | 'b', seed, exchange(turn, myChoice) → Promise<theirChoice> }.
+  // Both players run every turn with the same seeded random numbers, so both screens show the same battle.
+  // Choices: { type: 'move', i } (i = -1 for Struggle), { type: 'switch', i }, { type: 'forfeit' }, { type: 'none' }.
+  function prng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
   PP.Battle = {
     effect, movesAt, build,
     start(o) {
@@ -122,7 +127,11 @@
 
       const party = o.team.filter(e => d.pokemon.some(p => p.id === e.species)).map(e => build(d, e));
       const foes = o.foes.map(f => build(d, { species: f.species, level: f.level }));
-      const B = { kind: o.kind, me: Math.max(0, party.findIndex(m => m.hp > 0)), fi: 0, runs: 0, over: false, used: {}, log: [] };
+      const B = { kind: o.kind, me: Math.max(0, party.findIndex(m => m.hp > 0)), fi: 0, runs: 0, over: false, used: {}, log: [], turn: 0 };
+      const PVP = o.kind === 'pvp', vsTrainer = o.kind !== 'wild';    // a friend battle works like a trainer battle
+      let rand = Math.random;
+      const R = () => rand();
+      const reseed = n => { if (PVP) rand = prng((o.pvp.seed + n * 7919) >>> 0); };
       const cur = () => party[B.me], foe = () => foes[B.fi];
       const V = { me: { m: null, alpha: 0, dx: 0, dy: 0, scale: 1, anim: null, flash: 0 }, foe: { m: null, alpha: 0, dx: 0, dy: 0, scale: 1, anim: null, flash: 0 }, ball: null };
       const tName = o.trainer ? o.trainer.name : '';
@@ -159,7 +168,7 @@
         $(side + 'Name').textContent = m.name; $(side + 'Lv').textContent = 'Lv ' + m.lv;
         const bar = $(side + 'Hp'); bar.style.width = (m.hp / m.maxhp * 100) + '%'; hpClass(bar, m);
         if (side === 'me') { $('meHpNum').textContent = `${m.hp} / ${m.maxhp}`; $('meExp').style.width = expPct(m) + '%'; }
-        else $('foeParty').innerHTML = B.kind === 'trainer' ? foes.map(f => `<span class="${f.hp <= 0 ? 'out' : ''}"></span>`).join('') : '';
+        else $('foeParty').innerHTML = vsTrainer ? foes.map(f => `<span class="${f.hp <= 0 ? 'out' : ''}"></span>`).join('') : '';
       }
       const showHud = (side, on) => $(side + 'Hud').classList.toggle('gone', !on);
       async function hpTo(side, from) {
@@ -177,7 +186,13 @@
       function commands() {
         busy = false;
         $('msgText').textContent = `What will ${cur().name} do?`; $('msgNext').hidden = true;
-        const trainer = B.kind === 'trainer';
+        const trainer = vsTrainer;
+        if (PVP) return menu(`<div class="cmds">
+          <button class="cmd" data-c="fight" style="--c:#e03b3b"><span class="cmd-ic">${I('swords')}</span><span>Fight<small>${cur().moves.length} move${cur().moves.length === 1 ? '' : 's'}</small></span></button>
+          <button class="cmd" data-c="bag" style="--c:#e9a100" disabled><span class="cmd-ic">${I('bag')}</span><span>Bag<small>Not in friend battles</small></span></button>
+          <button class="cmd" data-c="party" style="--c:#2f9e6b"><span class="cmd-ic">${I('pokeball')}</span><span>Pokémon<small>Switch</small></span></button>
+          <button class="cmd" data-c="forfeit" style="--c:#3b6ef5"><span class="cmd-ic">${I('flee')}</span><span>Forfeit<small>Give up</small></span></button>
+        </div>`);
         menu(`<div class="cmds">
           <button class="cmd" data-c="fight" style="--c:#e03b3b"><span class="cmd-ic">${I('swords')}</span><span>Fight<small>${cur().moves.length} move${cur().moves.length === 1 ? '' : 's'}</small></span></button>
           <button class="cmd" data-c="bag" style="--c:#e9a100"><span class="cmd-ic">${I('bag')}</span><span>Bag<small>Balls &amp; medicine</small></span></button>
@@ -199,7 +214,7 @@
       let bagTab = 'balls';
       const bagItems = kind => d.items.filter(it => (kind === 'balls' ? it.ball > 0 : it.heal > 0) && (o.bag[it.id] || 0) > 0);
       function bagMenu() {
-        const f = foe(), m = cur(), trainer = B.kind === 'trainer', list = bagItems(bagTab);
+        const f = foe(), m = cur(), trainer = vsTrainer, list = bagItems(bagTab);
         menu(`<div class="tabs"><button class="tab${bagTab === 'balls' ? ' on' : ''}" data-tab="balls">Poké Balls</button><button class="tab${bagTab === 'meds' ? ' on' : ''}" data-tab="meds">Medicine</button></div>
           <div class="list">${list.length ? list.map(it => {
             const n = o.bag[it.id], pic = it.image ? `<img src="${PP.esc(encodeURI(it.image))}" alt="">` : `<span class="li-ic">${I(it.icon)}</span>`;
@@ -229,11 +244,12 @@
         if (t.dataset.c === 'party') return partyMenu(false);
         if (t.dataset.c === 'back') return commands();
         if (t.dataset.c === 'run') return turn({ type: 'run' });
+        if (t.dataset.c === 'forfeit') { if (confirm('Give up this battle?')) return turn({ type: 'forfeit' }); return; }
         if (t.dataset.tab) { bagTab = t.dataset.tab; return bagMenu(); }
         if (t.dataset.move != null) return turn({ type: 'move', move: t.dataset.move === 'struggle' ? STRUGGLE : cur().moves[+t.dataset.move] });
         if (t.dataset.item) return turn({ type: 'item', item: d.items.find(x => x.id === t.dataset.item) });
         if (t.dataset.switch != null) {
-          if ($('menu').dataset.forced) { busy = true; return switchIn(+t.dataset.switch, true).then(commands); }
+          if ($('menu').dataset.forced) { busy = true; if (PVP && forcedPick) { const f = forcedPick; forcedPick = null; return f(+t.dataset.switch); } return switchIn(+t.dataset.switch, true).then(commands); }
           return turn({ type: 'switch', i: +t.dataset.switch });
         }
       });
@@ -301,13 +317,13 @@
         const lx = side === 'me' ? 22 : -22, ly = side === 'me' ? -10 : 8;
         await tween(150, k => { V[side].dx = lx * k; V[side].dy = ly * k; });
         await tween(150, k => { V[side].dx = lx * (1 - k); V[side].dy = ly * (1 - k); });
-        if (Math.random() * 100 >= mv.accuracy) { sfx('miss'); return say(`${label(side, true)}’s attack missed!`); }
+        if (R() * 100 >= mv.accuracy) { sfx('miss'); return say(`${label(side, true)}’s attack missed!`); }
         const eff = effect(mv.type, def);
         if (eff === 0) return say(`It doesn’t affect ${label(other)}…`);
-        const crit = Math.random() < 1 / 16, stab = att.types.includes(mv.type) ? 1.5 : 1;
+        const crit = R() < 1 / 16, stab = att.types.includes(mv.type) ? 1.5 : 1;
         const A = mv.category === 'special' ? att.spa : att.atk, D = mv.category === 'special' ? def.spd : def.def;
         let dmg = Math.floor(Math.floor(Math.floor(2 * att.lv / 5 + 2) * mv.power * A / D) / 50) + 2;
-        dmg = Math.min(def.hp, Math.max(1, Math.floor(dmg * stab * eff * (.85 + Math.random() * .15) * (crit ? 1.5 : 1))));
+        dmg = Math.min(def.hp, Math.max(1, Math.floor(dmg * stab * eff * (.85 + R() * .15) * (crit ? 1.5 : 1))));
         if (side === 'foe' && o.protect) dmg = Math.min(dmg, Math.max(0, def.hp - 1));   // a battle the player can't lose
         const before = def.hp; def.hp -= dmg;
         sfx(eff > 1 ? 'super' : eff < 1 ? 'weak' : crit ? 'crit' : 'hit');
@@ -384,6 +400,7 @@
       }
 
       async function turn(a) {
+        if (PVP) return pvpTurn(a);
         busy = true;
         const me = cur(), f = foe();
         if (a.type === 'move') {
@@ -415,6 +432,72 @@
         }
         await afterTurn();
       }
+      // ---- friend battles
+      let forcedPick = null;
+      const encode = a => a.type === 'move' ? { type: 'move', i: a.move === STRUGGLE ? -1 : cur().moves.indexOf(a.move) } : a.type === 'switch' ? { type: 'switch', i: a.i } : { type: a.type };
+      const waiting = () => { $('console').classList.add('full'); $('menu').hidden = true; $('msgNext').hidden = true; $('msgText').textContent = `Waiting for ${tName}…`; };
+      async function trade(mine) {               // send my choice, get theirs, and line up the shared random numbers
+        waiting();
+        const theirs = await o.pvp.exchange(B.turn, mine);
+        reseed(B.turn); B.turn++;
+        return theirs || { type: 'timeout' };
+      }
+      async function foeSwitch(i, forced) {
+        if (!forced) { await say(`${tName} withdrew ${foe().name}!`, 300); await tween(260, k => { V.foe.alpha = 1 - k; }); }
+        showHud('foe', false); B.fi = Math.max(0, Math.min(foes.length - 1, i));
+        await say(`${tName} sent out ${foe().name}!`, 300);
+        Object.assign(V.foe, { m: foe(), alpha: 0, dx: 0, dy: 0, scale: .3 });
+        await tween(320, k => { V.foe.alpha = k; V.foe.scale = .3 + .7 * ease(k); });
+        hud('foe'); showHud('foe', true);
+      }
+      async function pvpTurn(a) {
+        busy = true;
+        const mine = encode(a), theirs = await trade(mine);
+        if (mine.type === 'forfeit') { await say('You gave up the battle.'); return finish('lost'); }
+        if (theirs.type === 'forfeit' || theirs.type === 'timeout') { await say(theirs.type === 'timeout' ? `${tName} stopped responding.` : `${tName} gave up!`); return finish('won'); }
+        // switches happen first (player a's before player b's), then moves by priority, speed, then a coin flip
+        const meA = o.pvp.side === 'a';
+        const switches = [['me', mine], ['foe', theirs]].filter(([, c]) => c.type === 'switch');
+        if (!meA) switches.reverse();
+        for (const [side, c] of switches) { if (side === 'me') await switchIn(c.i, false); else await foeSwitch(c.i, false); }
+        const moveOf = (side, c) => c.i < 0 ? STRUGGLE : (side === 'me' ? cur() : foe()).moves[c.i] || STRUGGLE;
+        const acts = [['me', mine], ['foe', theirs]].filter(([, c]) => c.type === 'move').map(([side, c]) => [side, moveOf(side, c)]);
+        if (acts.length === 2) {
+          const [m1, m2] = [acts[0][1], acts[1][1]], p1 = m1.priority || 0, p2 = m2.priority || 0;
+          let meFirst;
+          if (p1 !== p2) meFirst = p1 > p2;
+          else if (cur().spe !== foe().spe) meFirst = cur().spe > foe().spe;
+          else { const aFirst = R() < .5; meFirst = meA ? aFirst : !aFirst; }
+          if (!meFirst) acts.reverse();
+        }
+        for (const [side, mv] of acts) {
+          if (cur().hp <= 0 || foe().hp <= 0) break;
+          await useMove(side, mv);
+        }
+        return pvpAfter();
+      }
+      async function pvpAfter() {
+        const meLeft = party.some(m => m.hp > 0), foeLeft = foes.some(m => m.hp > 0);
+        if (!meLeft && !foeLeft) { await say('Both sides are out of Pokémon!'); return finish('draw'); }
+        if (!foeLeft) return finish('won');
+        if (!meLeft) { await say('You have no Pokémon left that can fight!'); return finish('lost'); }
+        const meOut = cur().hp <= 0, foeOut = foe().hp <= 0;
+        if (meOut || foeOut) {                   // fainted Pokémon are replaced together
+          let mine = { type: 'none' };
+          if (meOut) {
+            await say('Who will you send out next?', 300);
+            const i = await new Promise(res => { forcedPick = res; busy = false; partyMenu(true); });
+            mine = { type: 'switch', i };
+          }
+          busy = true;
+          const theirs = await trade(mine);
+          if (theirs.type === 'forfeit' || theirs.type === 'timeout') { await say(theirs.type === 'timeout' ? `${tName} stopped responding.` : `${tName} gave up!`); return finish('won'); }
+          if (meOut) await switchIn(mine.i, true);
+          if (foeOut) await foeSwitch(theirs.type === 'switch' ? theirs.i : foes.findIndex(m => m.hp > 0), true);
+        }
+        commands();
+      }
+
       async function afterTurn() {
         const me = cur(), f = foe();
         if (f.hp <= 0) {
@@ -440,9 +523,9 @@
 
       function finish(outcome) {
         if (B.over) return; B.over = true; busy = true;
-        if (PP.Audio) { if (outcome === 'won' || outcome === 'beat' || outcome === 'caught') { PP.Audio.stop(); sfx('victory'); } else if (outcome === 'lost') { PP.Audio.stop(); sfx('lose'); } }
-        // write the battle back onto the player's Pokémon
-        party.forEach(m => { m.ref.hp = m.hp >= m.maxhp ? null : Math.max(0, m.hp); m.ref.exp = m.exp; m.ref.level = m.lv; });
+        if (PP.Audio) { if (outcome === 'won' || outcome === 'beat' || outcome === 'caught') { PP.Audio.stop(); sfx('victory'); } else if (outcome === 'lost' || outcome === 'draw') { PP.Audio.stop(); sfx('lose'); } }
+        // write the battle back onto the player's Pokémon (friend battles never change your Pokémon)
+        if (!PVP) party.forEach(m => { m.ref.hp = m.hp >= m.maxhp ? null : Math.max(0, m.hp); m.ref.exp = m.exp; m.ref.level = m.lv; });
         const f = foe();
         const prize = outcome === 'won' && o.trainer ? o.trainer.prize || 0 : 0;
         const R = {
@@ -451,7 +534,10 @@
           caught: [`<img src="${PP.Sprite.portrait(f.folder) || ''}" alt="">`, `${f.name} caught!`, 'It’s been added to your Pokédex.'],
           ran: [I('flee'), 'Got away', 'You escaped safely.'],
           lost: [I('heart'), 'Out of usable Pokémon', o.loseText || 'You hurry back to safety. Your Pokémon will be healed.'],
+          draw: [I('swords'), 'It’s a draw!', `You and ${tName} were evenly matched.`],
         }[outcome];
+        if (PVP && outcome === 'won') R[2] = `You beat ${tName}!`;
+        if (PVP && outcome === 'lost') { R[1] = 'You lost'; R[2] = `${tName} won this time. Train up and try again!`; }
         $('resultIcon').innerHTML = R[0]; $('resultTitle').textContent = R[1]; $('resultText').textContent = R[2];
         setTimeout(() => { $('result').hidden = false; }, 250);
         $('resultGo').onclick = () => {
@@ -464,11 +550,11 @@
       (async () => {
         foes.concat(party).forEach(m => PP.Sprite.preload(m.folder, ['Idle', 'Attack', 'Hurt', 'Hop']));
         Object.assign(V.foe, { m: foe(), alpha: 1, dx: 260 });
-        $('trainerChip').hidden = B.kind !== 'trainer';
+        $('trainerChip').hidden = !vsTrainer;
         $('trainerChip').innerHTML = I('user') + PP.esc(tName);
         await tween(600, k => { V.foe.dx = 260 * (1 - ease(k)); });
         if (B.kind === 'wild') await say(`A wild ${foe().name} appeared!`);
-        else { await say(`${tName} wants to battle!`); await say(`${tName} sent out ${foe().name}!`); }
+        else { await say(PVP ? `Friend battle with ${tName}!` : `${tName} wants to battle!`); await say(`${tName} sent out ${foe().name}!`); }
         hud('foe'); showHud('foe', true);
         await sendOut();
         commands();

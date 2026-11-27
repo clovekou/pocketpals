@@ -813,6 +813,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     S.claimName(name, null);
     S.log('system', `New player chose the name ${name}`);
     save.name = name; save.named = true;
+    if (SO.on) SO.setName(name);
     commit(); hideStory(); onboard();
   }
   /** start or resume the welcome for players who haven't finished it */
@@ -868,6 +869,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
 
   // ---------------- rendering: values (every second) ----------------
   function update() {
+    if (SO.on) updateFriendsBadge();
     const s = data.settings, t = Date.now();
     $('pName').textContent = save.name;
     $('pLevel').textContent = save.level;
@@ -1140,13 +1142,21 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
           </button>`).join('')}</div>
         <button class="btn btn-primary starter-go" data-do="choose-starter" ${pick ? '' : 'disabled'}>${pick ? `Choose ${esc(pick.name)}` : 'Pick a Pokémon'}</button>` };
     },
-    party() { return { title: data.settings.tabParty, body: empty('users', 'No friends yet', 'Friends you add will be listed here.') }; },
+    party() {
+      const title = data.settings.tabParty;
+      if (!SO.on) return { title, body: empty('users', 'Friends need Google sign-in', 'When the game is online, sign in with Google to add friends, chat, trade and battle together.') };
+      if (!save.named || !petSpecies()) return { title, body: empty('users', 'Finish the welcome first', 'Choose your name and your first Pokémon, then come back to add friends.') };
+      if (friendView && SO.friend(friendView)) return { title, body: friendPageHTML(SO.friend(friendView)) };
+      friendView = null;
+      return { title, body: friendsListHTML() };
+    },
     settings() {
       const icon = (avatarSpecies() || {}).id, owned = [...new Set(save.box.map(b => b.species))].map(speciesOf).filter(Boolean);
       return { title: 'Profile & settings', body: `
         <div class="sec-label">In-game name</div>
-        <form class="field" data-form="name"><input id="nameInput" maxlength="${data.settings.nameMax}" value="${esc(save.name)}" autocomplete="off" spellcheck="false"><button class="btn btn-primary" type="submit">Save</button></form>
-        <p class="field-err" id="nameErr"></p>
+        ${SO.on ? `<div class="f-me"><b>${esc(save.name)}</b><span>Your unique player name. Friends find you by it, so it can’t be changed.</span></div>`
+          : `<form class="field" data-form="name"><input id="nameInput" maxlength="${data.settings.nameMax}" value="${esc(save.name)}" autocomplete="off" spellcheck="false"><button class="btn btn-primary" type="submit">Save</button></form>
+        <p class="field-err" id="nameErr"></p>`}
         <div class="sec-label">Profile icon</div>
         ${owned.length ? `<div class="icon-grid">${owned.map(p => { const pic = PP.Sprite.portrait(p.folder);
           return `<button class="icon-pick${p.id === icon ? ' on' : ''}" data-do="avatar" data-id="${esc(p.id)}" title="${esc(p.name)}" aria-pressed="${p.id === icon}">${pic ? `<img src="${pic}" alt="">` : I('pokeball')}<span>${esc(p.name)}</span></button>`; }).join('')}</div>
@@ -1163,6 +1173,247 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         <p class="muted">Pocket Pals · ${PP.Cloud.on ? 'online' : 'saved on this device'}${data.settings.fastTime ? ' · fast time on' : ''}</p>` };
     },
   };
+  // ---------------- friends (online only; data in js/online/social.js) ----------------
+  const SO = PP.Social || { on: false };
+  let friendView = null, friendQuery = '', friendResults = null, chatPair = null, chatUnsub = null, chatMsgs = [], tradePicking = false;
+  const handled = new Set();              // trades and battles this tab already acted on
+  let pvpOn = null;
+  const portraitOf = sp => { const p = speciesOf(sp); return p ? PP.Sprite.portrait(p.folder) : null; };
+  const avatarImg = sp => { const pic = sp && portraitOf(sp); return `<span class="f-ava">${pic ? `<img src="${pic}" alt="">` : I('user')}</span>`; };
+  function agoText(t) {
+    if (!t) return 'a while ago';
+    const m = Math.round((Date.now() - t) / 60000);
+    return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+  }
+  const statusText = uid => SO.isOnline(uid) ? 'Online' : `Last seen ${agoText(SO.lastSeen(uid))}`;
+  const dot = uid => `<span class="f-dot${SO.isOnline(uid) ? ' on' : ''}" title="${SO.isOnline(uid) ? 'Online' : 'Offline'}"></span>`;
+  const fresh = (x, mins) => Date.now() - SO.ms(x.at) < mins * 60000 || !x.at;
+  const invitesIn = () => SO.state.battlesIn.filter(b => b.status === 'invited' && fresh(b, 15));
+  const invitesOut = () => SO.state.battlesOut.filter(b => b.status === 'invited' && fresh(b, 15));
+  const offersIn = () => SO.state.tradesIn.filter(t => t.status === 'offered');
+  const offersOut = () => SO.state.tradesOut.filter(t => t.status === 'offered');
+  /** how many things wait for the player in Friends (shown on the tab) */
+  const friendAlerts = () => !SO.on ? 0 : SO.state.reqIn.length + invitesIn().length + offersIn().length + SO.state.friends.filter(SO.unread).length;
+  /** the Pokémon you can give away: not your partner, and never your last one */
+  const tradeable = () => save.box.length > 1 ? save.box.filter(e => e.uid !== save.partner) : [];
+  const entryCard = (e, extra) => { const sp = speciesOf(e.species) || { name: e.species };
+    return `<div class="t-mon">${avatarImg(e.species)}<div><b>${esc(e.nickname || sp.name)}</b><small>Lv ${e.level}${extra ? ' · ' + extra : ''}</small></div></div>`; };
+
+  function friendsListHTML() {
+    const st = SO.state;
+    const results = friendResults == null ? '' : friendResults.length ? friendResults.map(r => {
+      const rel = SO.relation(r.uid);
+      const btn = rel === 'friend' ? '<span class="qty">Friends</span>' : rel === 'sent' ? '<span class="qty">Requested</span>'
+        : `<button class="btn btn-primary btn-sm" data-do="f-add" data-id="${esc(r.uid)}" data-name="${esc(r.name)}">${rel === 'received' ? 'Accept' : 'Add'}</button>`;
+      return `<div class="row"><span class="row-ic" style="--c:var(--accent)">${I('user')}</span><div class="row-main"><div class="row-title">${esc(r.name)}</div></div><div class="row-side">${btn}</div></div>`;
+    }).join('') : '<p class="muted" style="text-align:left">No player with that name.</p>';
+    const inv = invitesIn().map(b => `<div class="row f-alert"><span class="row-ic" style="--c:#c2410c">${I('swords')}</span>
+      <div class="row-main"><div class="row-title">${esc(b.names.a)} challenges you!</div><div class="row-sub">Live battle with your team</div></div>
+      <div class="row-side"><button class="btn btn-sm" data-do="b-decline" data-id="${esc(b.id)}">No</button><button class="btn btn-primary btn-sm" data-do="b-accept" data-id="${esc(b.id)}">Battle</button></div></div>`).join('');
+    const reqIn = st.reqIn.map(r => `<div class="row f-alert"><span class="row-ic" style="--c:var(--accent)">${I('user')}</span>
+      <div class="row-main"><div class="row-title">${esc(r.fromName)}</div><div class="row-sub">Wants to be friends</div></div>
+      <div class="row-side"><button class="btn btn-sm" data-do="r-decline" data-id="${esc(r.id)}">Decline</button><button class="btn btn-primary btn-sm" data-do="r-accept" data-id="${esc(r.id)}">Accept</button></div></div>`).join('');
+    const reqOut = st.reqOut.map(r => `<div class="row"><span class="row-ic" style="--c:var(--text-3)">${I('clock')}</span>
+      <div class="row-main"><div class="row-title">${esc(r.toName)}</div><div class="row-sub">Request sent</div></div>
+      <div class="row-side"><button class="btn btn-sm" data-do="r-decline" data-id="${esc(r.id)}">Cancel</button></div></div>`).join('');
+    const fr = st.friends.slice().sort((a, b) => (SO.isOnline(b.uid) - SO.isOnline(a.uid)) || a.name.localeCompare(b.name));
+    const friends = fr.map(f => {
+      const p = st.profiles[f.uid] || {}, n = offersIn().filter(t => t.from === f.uid).length + invitesIn().filter(b => b.a === f.uid).length;
+      return `<button class="row f-row" data-do="friend" data-id="${esc(f.uid)}">${avatarImg(p.avatar)}${dot(f.uid)}
+        <div class="row-main"><div class="row-title">${esc(f.name)}${SO.unread(f) ? ' <span class="f-new">new message</span>' : ''}</div>
+        <div class="row-sub">${esc(statusText(f.uid))}${p.level ? ` · Lv ${p.level}` : ''}${p.badges ? ` · ${p.badges} badge${p.badges === 1 ? '' : 's'}` : ''}</div></div>
+        <div class="row-side">${n ? `<span class="tab-dot">${n}</span>` : ''}${I('chevron')}</div></button>`;
+    }).join('');
+    return `<div class="f-me"><small>Your player name</small><b>${esc(save.name)}</b><span>Friends find you by this name.</span></div>
+      <form class="field" data-form="fsearch"><input id="friendSearch" placeholder="Find a player by name" value="${esc(friendQuery)}" autocomplete="off" spellcheck="false" maxlength="${data.settings.nameMax}"><button class="btn btn-primary" type="submit">${I('search')}Search</button></form>
+      <div id="fResults">${results}</div>
+      ${inv || reqIn ? `<div class="sec-label">Waiting for you</div>${inv}${reqIn}` : ''}
+      <div class="sec-label">Friends · ${fr.length} · ${fr.filter(f => SO.isOnline(f.uid)).length} online</div>
+      ${friends || empty('users', 'No friends yet', 'Search for a player by name and send a friend request.')}
+      ${reqOut ? `<div class="sec-label">Requests you sent</div>${reqOut}` : ''}`;
+  }
+
+  function friendPageHTML(f) {
+    const p = SO.state.profiles[f.uid] || {}, online = SO.isOnline(f.uid);
+    if (chatPair !== f.id) openChat(f.id);
+    const myInvite = invitesOut().find(b => b.b === f.uid), theirInvite = invitesIn().find(b => b.a === f.uid);
+    const battle = theirInvite ? `<div class="f-box"><p><b>${esc(f.name)}</b> challenges you to a live battle!</p>
+        <div class="f-actions"><button class="btn" data-do="b-decline" data-id="${esc(theirInvite.id)}">Not now</button><button class="btn btn-primary" data-do="b-accept" data-id="${esc(theirInvite.id)}">${I('swords')}Battle</button></div></div>`
+      : myInvite ? `<div class="f-box"><p>Waiting for <b>${esc(f.name)}</b> to accept your battle…</p><div class="f-actions"><button class="btn" data-do="b-cancel" data-id="${esc(myInvite.id)}">Cancel</button></div></div>`
+      : `<button class="btn btn-primary f-big" data-do="b-invite" data-id="${esc(f.uid)}">${I('swords')}Challenge to a live battle</button>${online ? '' : `<p class="muted" style="margin:6px 0 0">${esc(f.name)} is offline, so they’ll see it next time they play.</p>`}`;
+    const inOffer = offersIn().find(t => t.from === f.uid), outOffer = offersOut().find(t => t.to === f.uid);
+    const mine = tradeable();
+    const picker = (act, id) => mine.length ? `<div class="t-grid">${mine.map(e => { const sp = speciesOf(e.species) || { name: e.species };
+        return `<button class="t-pick" data-do="${act}" data-id="${esc(id)}" data-uid="${esc(e.uid)}">${avatarImg(e.species)}<b>${esc(e.nickname || sp.name)}</b><small>Lv ${e.level}</small></button>`; }).join('')}</div>`
+      : '<p class="muted" style="text-align:left">You need at least 2 Pokémon to trade (your partner on the home screen stays with you).</p>';
+    const trade = inOffer ? `<div class="f-box"><p><b>${esc(f.name)}</b> offers:</p>${entryCard(inOffer.offer)}<p style="margin-top:10px">Pick one of yours to give back:</p>${picker('t-accept', inOffer.id)}
+        <div class="f-actions"><button class="btn" data-do="t-decline" data-id="${esc(inOffer.id)}">Decline</button></div></div>`
+      : outOffer ? `<div class="f-box"><p>You offered:</p>${entryCard(outOffer.offer)}<p class="muted" style="text-align:left">Waiting for ${esc(f.name)} to pick one of theirs…</p>
+        <div class="f-actions"><button class="btn" data-do="t-cancel" data-id="${esc(outOffer.id)}">Take it back</button></div></div>`
+      : tradePicking ? `<div class="f-box"><p>Which Pokémon do you want to offer?</p>${picker('t-offer', f.uid)}<div class="f-actions"><button class="btn" data-do="t-pick" data-id="0">Cancel</button></div></div>`
+      : `<button class="btn f-big" data-do="t-pick" data-id="1">${I('box')}Offer a Pokémon to trade</button>`;
+    return `<button class="f-back" data-do="friend" data-id="">${I('chevron')}Friends</button>
+      <div class="f-head">${avatarImg(p.avatar)}<div><b>${esc(f.name)}</b><span>${dot(f.uid)}${esc(statusText(f.uid))}${p.level ? ` · Trainer Lv ${p.level}` : ''}</span>
+        <small>${p.caught ? `${p.caught} Pokémon caught` : ''}${p.badges ? ` · ${p.badges} badge${p.badges === 1 ? '' : 's'}` : ''}</small></div></div>
+      <div class="sec-label">Battle</div>${battle}
+      <div class="sec-label">Trade</div>${trade}
+      <div class="sec-label">Chat</div>
+      <div class="chat-log" id="chatLog">${chatHTML()}</div>
+      <form class="field" data-form="chat"><input id="chatInput" placeholder="Message ${esc(f.name)}" maxlength="300" autocomplete="off"><button class="btn btn-primary" type="submit">Send</button></form>
+      <button class="f-remove" data-do="f-remove" data-id="${esc(f.uid)}">Remove friend</button>`;
+  }
+  function chatHTML() {
+    if (!chatMsgs.length) return '<p class="muted">No messages yet. Say hi!</p>';
+    const me = PP.Cloud.user.uid;
+    return chatMsgs.map(m => `<div class="msg${m.from === me ? ' me' : ''}"><span>${esc(m.text)}</span><small>${esc(agoText(SO.ms(m.at) || Date.now()))}</small></div>`).join('');
+  }
+  function openChat(pair) {
+    if (chatUnsub) chatUnsub();
+    chatPair = pair; chatMsgs = [];
+    chatUnsub = SO.openChat(pair, list => {
+      chatMsgs = list; SO.markRead(pair);
+      const log = $('chatLog');
+      if (log) { log.innerHTML = chatHTML(); log.scrollTop = log.scrollHeight; }
+    });
+  }
+  function closeChat() { if (chatUnsub) chatUnsub(); chatUnsub = null; chatPair = null; chatMsgs = []; }
+  async function runFriendSearch(q) {
+    friendQuery = q; friendResults = null;
+    if (!q.trim()) { renderSheet(); return; }
+    try { friendResults = await SO.search(q); } catch (e) { friendResults = []; toast('Search didn’t work. Try again.'); }
+    const r = $('fResults'); if (r && sheetKind === 'party') renderSheet();
+  }
+
+  // ---- trades: the save only changes on this player's own device
+  function takeOut(uid) {
+    const e = save.box.find(x => x.uid === uid); if (!e) return null;
+    save.box = save.box.filter(x => x.uid !== uid);
+    save.team = save.team.filter(x => x !== uid);
+    if (!save.team.length && save.partner) save.team = [save.partner];
+    if (save.avatar === e.species && !save.box.some(x => x.species === e.species)) save.avatar = '';
+    return e;
+  }
+  function putIn(entry, from) {
+    const sp = speciesOf(entry.species); if (!sp) return null;
+    const e = { uid: newUid(), species: sp.id, nickname: entry.nickname || '', since: Date.now(), level: entry.level, exp: entry.exp, hp: null, caughtAt: from };
+    save.box.push(e);
+    if (save.team.length < data.settings.teamMax) save.team.push(e.uid);
+    save.dex.seen[sp.id] = save.dex.seen[sp.id] || Date.now(); save.dex.caught[sp.id] = save.dex.caught[sp.id] || Date.now();
+    return e;
+  }
+  const plain = e => ({ species: e.species, level: e.level, exp: e.exp, nickname: e.nickname || '' });
+  async function offerTrade(friendUid, entryUid) {
+    const f = SO.friend(friendUid), e = save.box.find(x => x.uid === entryUid);
+    if (!f || !e || !tradeable().includes(e)) return;
+    try {
+      const ref = await SO.offerTrade(f.uid, f.name, plain(e));
+      handled.add(ref.id); takeOut(e.uid); save.tradesDone[ref.id] = 'offered';
+      S.log('pokemon', `Offered ${labelOf(e)} to ${f.name} in a trade`);
+      tradePicking = false; commit(); toast(`Offer sent to ${f.name}`);
+    } catch (err) { toast('Couldn’t send the offer. Try again.'); }
+  }
+  async function acceptTrade(id, entryUid) {
+    const t = SO.state.tradesIn.find(x => x.id === id), e = save.box.find(x => x.uid === entryUid);
+    if (!t || !e || !tradeable().includes(e)) return;
+    let ok = false;
+    try { ok = await SO.acceptTrade(id, plain(e)); } catch (err) { return toast('Couldn’t trade. Try again.'); }
+    if (!ok) return toast(`${t.fromName} took the offer back.`);
+    takeOut(e.uid); const got = putIn(t.offer, `Traded from ${t.fromName}`);
+    save.tradesDone[id] = 'received';
+    S.log('pokemon', `Traded ${labelOf(e)} to ${t.fromName} for ${got ? labelOf(got) : t.offer.species}`);
+    commit(); PP.Audio.sfx('catch'); toast(`Trade complete! ${got ? labelOf(got) : 'Your new Pokémon'} joined you.`);
+  }
+  async function cancelTrade(id) {
+    const t = SO.state.tradesOut.find(x => x.id === id); if (!t) return;
+    let ok = false;
+    try { ok = await SO.cancelTrade(id); } catch (err) { return toast('Couldn’t take it back. Try again.'); }
+    if (!ok) return;                       // they accepted first; the trade finishes below
+    putIn(t.offer, 'Returned from a trade'); save.tradesDone[id] = 'cancelled';
+    S.log('pokemon', `Took back a trade offer to ${t.toName}`); commit(); toast('Offer taken back');
+  }
+  /** finish your side of trades your friends answered (also catches up after being away) */
+  function settleTrades() {
+    let changed = false;
+    SO.state.tradesOut.forEach(t => {
+      const done = save.tradesDone[t.id];
+      if (t.status === 'accepted' && done !== 'done' && t.give) {
+        const got = putIn(t.give, `Traded from ${t.toName}`);
+        save.tradesDone[t.id] = 'done'; changed = true;
+        S.log('pokemon', `Trade with ${t.toName} complete: got ${got ? labelOf(got) : t.give.species}`);
+        toast(`${t.toName} accepted your trade! ${got ? labelOf(got) : 'A new Pokémon'} joined you.`); PP.Audio.sfx('catch');
+        SO.closeTrade(t.id, 'done').catch(() => {});
+      } else if (t.status === 'declined' && done !== 'returned' && done !== 'cancelled') {
+        putIn(t.offer, 'Returned from a trade'); save.tradesDone[t.id] = 'returned'; changed = true;
+        toast(`${t.toName} declined your trade. Your Pokémon came back.`);
+        SO.closeTrade(t.id, 'closed').catch(() => {});
+      }
+    });
+    if (changed) commit();
+  }
+
+  // ---- live battles
+  const myTeamSnapshot = () => teamEntries().slice(0, data.settings.teamMax).map(plain);
+  function startPvp(b, side) {
+    if (pvpOn || storyOn()) return;
+    handled.add(b.id); pvpOn = b.id;
+    const other = side === 'a' ? 'b' : 'a', name = b.names[other], otherUid = b[other];
+    closeSheet(true); setCare(false); closeChat();
+    const layer = $('battleLayer'); layer.hidden = false;
+    PP.Audio.play(data.settings.musicTrainer);
+    const pick = id => (data.backgrounds.find(x => x.id === id) || {}).image;
+    PP.Battle.start({
+      root: layer, data, kind: 'pvp', bag: {}, trainer: { name, prize: 0 },
+      team: (b.teams[side] || []).map(e => Object.assign({}, e, { hp: null, uid: newUid() })),
+      foes: (b.teams[other] || []).map(e => ({ species: e.species, level: e.level })),
+      backgrounds: [pick(data.settings.battleBgGym), pick(data.settings.battleBgLand)].filter(Boolean),
+      pvp: { side, seed: b.seed, exchange: (turn, choice) => SO.exchange(b.id, side, turn, choice) },
+      onEnd: r => {
+        layer.hidden = true; layer.innerHTML = ''; pvpOn = null;
+        PP.Audio.play(data.settings.musicHome);
+        const won = r.outcome === 'won', lost = r.outcome === 'lost';
+        SO.endBattle(b.id, won ? PP.Cloud.user.uid : lost ? otherUid : 'draw');
+        S.log('battle', `Live battle with ${name}: ${won ? 'won' : lost ? 'lost' : 'draw'}`);
+        if (won) bump('battle:win');
+        commit();
+      },
+    });
+  }
+  async function inviteBattle(uid) {
+    const f = SO.friend(uid); if (!f) return;
+    const team = myTeamSnapshot(); if (!team.length) return toast('You need a Pokémon in your team first.');
+    try { await SO.challenge(f.uid, f.name, team); toast(`Challenge sent to ${f.name}`); } catch (e) { toast('Couldn’t send the challenge. Try again.'); }
+  }
+  async function acceptBattle(id) {
+    const b = SO.state.battlesIn.find(x => x.id === id); if (!b) return;
+    const team = myTeamSnapshot(); if (!team.length) return toast('You need a Pokémon in your team first.');
+    try { await SO.acceptBattle(id, team); } catch (e) { return toast('Couldn’t join the battle. Try again.'); }
+    startPvp(Object.assign({}, b, { teams: { a: b.teams.a, b: team } }), 'b');
+  }
+  /** react to friends' requests, trades and battles */
+  const seenAlerts = new Set();
+  function onSocial() {
+    settleTrades();
+    SO.state.battlesOut.forEach(b => {      // your challenge was accepted: start
+      if (b.status === 'active' && !handled.has(b.id) && fresh(b, 2)) startPvp(b, 'a');
+      if (b.status === 'declined' && !seenAlerts.has('d' + b.id) && fresh(b, 5)) { seenAlerts.add('d' + b.id); toast(`${b.names.b} can’t battle right now.`); }
+    });
+    const note = (key, text) => { if (!seenAlerts.has(key)) { seenAlerts.add(key); if (!firstSocial) { toast(text); PP.Audio.sfx('pop'); } } };
+    SO.state.reqIn.forEach(r => note('r' + r.id, `${r.fromName} sent you a friend request`));
+    invitesIn().forEach(b => note('b' + b.id, `${b.names.a} challenges you to a battle!`));
+    offersIn().forEach(t => note('t' + t.id, `${t.fromName} offered you a trade`));
+    SO.state.friends.forEach(f => { if (SO.unread(f) && f.id !== chatPair) note('m' + f.id + SO.ms(f.last.at), `${f.name}: ${f.last.text.slice(0, 60)}`); });
+    firstSocial = false;
+    updateFriendsBadge();
+    if (sheetKind === 'party') renderSheet();
+  }
+  let firstSocial = true;
+  function updateFriendsBadge() {
+    const tab = document.querySelector('.tab[data-kind="party"]'); if (!tab) return;
+    let b = tab.querySelector('.tab-badge'); const n = friendAlerts();
+    if (!b) { b = document.createElement('span'); b.className = 'tab-badge'; tab.appendChild(b); }
+    b.textContent = n > 9 ? '9+' : n; b.hidden = !n;
+  }
+
   /** Explore → Story: the current chapter's checklist, what's next, and the badge case */
   function storyHTML() {
     const ch = PP.Story.currentChapter(data, save), cur = PP.Story.current(data, save);
@@ -1224,6 +1475,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
   /** close the open sheet; the starter screen only closes once a Pokémon is chosen (force) */
   function closeSheet(force) {
     if (sheetKind === 'starter' && force !== true) return;
+    if (sheetKind === 'party') closeChat();
     sheetKind = null; $('sheet').hidden = true; $('sheet').classList.remove('locked');
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
   }
@@ -1232,6 +1484,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const body = $('sheetBody'), scroll = body.scrollTop;
     const a = document.activeElement;
     if (a && (a.id === 'nameInput' || a.id === 'petNameInput')) return;   // don't wipe what's being typed
+    if (sheetKind === 'party' && a && (a.id === 'chatInput' || a.id === 'friendSearch')) return;
     if (sheetKind === 'shop' && a && a.id === 'shopSearch' && $('shopGrid')) { refreshShop(); return; }
     const v = SHEETS[sheetKind]();
     $('sheetTitle').textContent = v.title;
@@ -1291,6 +1544,20 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       case 'act': { const a = data.actions.find(x => x.id === id); if (a) doAction(a); break; }
       case 'sheet': openSheet(b.dataset.kind); break;
       case 'close': closeSheet(); break;
+      case 'friend': friendView = id || null; tradePicking = false; if (!friendView) closeChat(); renderSheet(); $('sheetBody').scrollTop = 0; break;
+      case 'f-add': SO.sendRequest(id, b.dataset.name).then(() => toast('Friend request sent'), () => toast('Couldn’t send the request. Try again.')); break;
+      case 'r-accept': { const r = SO.state.reqIn.find(x => x.id === id); if (r) SO.accept(r).then(() => toast(`You and ${r.fromName} are now friends!`), () => toast('Couldn’t accept. Try again.')); break; }
+      case 'r-decline': { const r = SO.state.reqIn.concat(SO.state.reqOut).find(x => x.id === id); if (r) SO.decline(r).catch(() => {}); break; }
+      case 'f-remove': { const f = SO.friend(id); if (f && confirm(`Remove ${f.name} from your friends?`)) { SO.unfriend(f).catch(() => {}); friendView = null; closeChat(); renderSheet(); } break; }
+      case 'b-invite': inviteBattle(id); break;
+      case 'b-accept': acceptBattle(id); break;
+      case 'b-decline': SO.declineBattle(id).catch(() => {}); break;
+      case 'b-cancel': SO.cancelBattle(id).catch(() => {}); break;
+      case 't-pick': tradePicking = id === '1'; renderSheet(); break;
+      case 't-offer': offerTrade(id, b.dataset.uid); break;
+      case 't-accept': acceptTrade(id, b.dataset.uid); break;
+      case 't-decline': SO.declineTrade(id).catch(() => {}); break;
+      case 't-cancel': cancelTrade(id); break;
       case 'sign-out': persist(); PP.Cloud.signOut(); break;
       case 'claim': { e.stopPropagation(); const q = data.quests.find(x => x.id === id); if (q) claim(q); break; }
       case 'explore': { const l = locOf(id); if (l) explore(l); break; }
@@ -1313,6 +1580,12 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         $('nameErr').textContent = why || '';
         if (!why) $('nameInput').blur();
       });
+    }
+    if (e.target.dataset.form === 'fsearch') { e.preventDefault(); runFriendSearch($('friendSearch').value); }
+    if (e.target.dataset.form === 'chat') {
+      e.preventDefault();
+      const i = $('chatInput'), text = i.value.trim();
+      if (text && chatPair) { i.value = ''; SO.sendMessage(chatPair, text).catch(() => { i.value = text; toast('Message not sent. Try again.'); }); }
     }
     if (e.target.dataset.form === 'pname') { e.preventDefault(); submitName($('pnameInput').value); }
     if (e.target.dataset.form === 'petname') { e.preventDefault(); const i = $('petNameInput'); i.blur(); renamePet(i.value); }
@@ -1365,6 +1638,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
   else if (away >= 30) S.log('system', `Back after ${away >= 120 ? Math.round(away / 60) + ' h' : Math.round(away) + ' min'} of game time; needs dropped while away`);
   persist();
   renderShell(); update();
+  if (SO.on) { SO.start({ name: save.named ? save.name : '' }); SO.subscribe(onSocial); }
   PP.Audio.configure(data);
   if (!save.pendingBattle) PP.Audio.play(data.settings.musicHome);   // a battle being resumed picks its own music
   const sp0 = petSpecies(); if (sp0) PP.Sprite.preload(sp0.folder);

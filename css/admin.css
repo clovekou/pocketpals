@@ -172,3 +172,5 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .multi-opt.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .steps-list { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 13.5px; line-height: 1.5; }
 .steps-list code { font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+.odot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #9aa1ad; margin-right: 4px; vertical-align: 1px; }
+.odot.on { background: #22c55e; }

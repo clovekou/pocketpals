@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 13,
+  contentVersion: 14,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -41,6 +41,11 @@ PP.SCHEMA = {
     // the Professor is now Professor Kou
     { v: 13, collection: 'trainers', ids: ['kai-1'], set: { intro: 'Kai: Hold on, {name}! Professor Kou gave you a Pokémon too?\nKai: Then let’s see whose partner is stronger!' } },
     { v: 13, collection: 'locations', ids: ['hearthmoor'], set: { description: 'Your quiet home village and Professor Kou’s lab.' } },
+  ],
+  // Rows removed from older saved data (features that were taken out).
+  rowRemovals: [
+    { v: 14, collection: 'needs', ids: ['water'] },      // drinking was removed
+    { v: 14, collection: 'actions', ids: ['drink'] },
   ],
   // One-time setting changes applied to saved data older than `v` (new defaults that should win over
   // values saved before they existed). The admin can change them again afterwards.
@@ -299,7 +304,6 @@ PP.SCHEMA = {
         { id: 'joy', label: 'Joy', icon: 'heart', color: '#e8487d', start: 80, decayPerHour: 5 },
         { id: 'energy', label: 'Energy', icon: 'bolt', color: '#e9a100', start: 90, decayPerHour: 4 },
         { id: 'hygiene', label: 'Clean', icon: 'drop', color: '#2f86eb', start: 90, decayPerHour: 3 },
-        { id: 'water', label: 'Water', icon: 'cup', color: '#13a8c2', start: 85, decayPerHour: 5 },
       ],
     },
 
@@ -385,7 +389,6 @@ PP.SCHEMA = {
         { id: 'play', label: 'Play', icon: 'star', enabled: true, need: 'joy', amount: 15, exp: 8, coinCost: 0, cooldownSec: 30, anim: 'Hop', emotion: 'Joyous' },
         { id: 'wash', label: 'Wash', icon: 'drop', enabled: true, need: 'hygiene', amount: 25, exp: 5, coinCost: 0, cooldownSec: 60, anim: 'Nod', emotion: 'Inspired' },
         { id: 'rest', label: 'Rest', icon: 'moon', enabled: true, need: 'energy', amount: 30, exp: 3, coinCost: 0, cooldownSec: 120, anim: 'Sleep', emotion: 'Sigh' },
-        { id: 'drink', label: 'Water', icon: 'cup', enabled: true, need: 'water', amount: 25, exp: 4, coinCost: 0, cooldownSec: 45, anim: 'Eat', emotion: 'Happy' },
       ],
     },
 

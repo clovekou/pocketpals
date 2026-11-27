@@ -21,6 +21,44 @@ service cloud.firestore {
     match /saves/{uid} { allow read: if player() && (me(uid) || admin()); allow write: if player() && me(uid); }
     // public profile friends can see
     match /players/{uid} { allow read: if player(); allow write: if player() && me(uid); }
+    // private account details (email, when they joined): only that player writes it, only admins read it
+    match /accounts/{uid} { allow read: if admin() || (player() && me(uid)); allow write: if player() && me(uid); }
+
+    // ---- friends ----
+    function askedMe(users) {
+      let other = users[0] == request.auth.uid ? users[1] : users[0];
+      return exists(/databases/$(db)/documents/requests/$(other + '_' + request.auth.uid));
+    }
+    function inPair(pair) { return request.auth.uid in get(/databases/$(db)/documents/friends/$(pair)).data.users; }
+    // friend requests: id is "fromUid_toUid"
+    match /requests/{id} {
+      allow read: if player() && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow create: if player() && request.resource.data.from == request.auth.uid && id == request.auth.uid + '_' + request.resource.data.to;
+      allow delete: if player() && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+    }
+    // a friendship can only be created by the player a request was sent to
+    match /friends/{pair} {
+      allow read: if player() && request.auth.uid in resource.data.users;
+      allow create: if player() && request.auth.uid in request.resource.data.users && request.resource.data.users.size() == 2
+        && askedMe(request.resource.data.users);
+      allow update: if player() && request.auth.uid in resource.data.users && request.resource.data.users == resource.data.users;
+      allow delete: if player() && request.auth.uid in resource.data.users;
+      match /messages/{msg} {
+        allow read: if player() && inPair(pair);
+        allow create: if player() && inPair(pair) && request.resource.data.from == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() <= 300;
+      }
+    }
+    // trades and live battles: only the two players involved
+    match /trades/{id} {
+      allow read, update: if player() && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow create: if player() && request.resource.data.from == request.auth.uid && request.resource.data.status == 'offered';
+    }
+    match /battles/{id} {
+      allow read, update: if player() && (resource.data.a == request.auth.uid || resource.data.b == request.auth.uid);
+      allow create: if player() && request.resource.data.a == request.auth.uid && request.resource.data.status == 'invited';
+    }
+
     // unique in-game names: first come, first served; only the holder can give a name back
     match /names/{key} {
       allow read: if player();

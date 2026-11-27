@@ -88,7 +88,9 @@ window.PP = window.PP || {};
   // ---------------- start-up ----------------
   const script = src => new Promise((ok, bad) => { const s = document.createElement('script'); s.src = SDK + src; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
   gate('busy', 'Connecting…');
-  script('firebase-app-compat.js').then(() => Promise.all([script('firebase-auth-compat.js'), script('firebase-firestore-compat.js')])).then(() => {
+  const sdk = window.firebase && window.firebase.firestore ? Promise.resolve()      // a test stand-in is already loaded
+    : script('firebase-app-compat.js').then(() => Promise.all([script('firebase-auth-compat.js'), script('firebase-firestore-compat.js')]));
+  sdk.then(() => {
     firebase.initializeApp(CFG);
     auth = firebase.auth(); db = Cloud.db = firebase.firestore();
     let heard = false;
@@ -107,6 +109,12 @@ window.PP = window.PP || {};
     catch (e) { if (e.code === 'permission-denied') return gate('denied'); throw e; }
     if (PAGE === 'admin' && !Cloud.admin) return gate('notadmin');
     gate('busy', 'Loading your game…');
+
+    // who joined and when: a public profile for friends, private details (email) for the admin
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    const prof = await db.doc('players/' + uid).get();
+    if (!prof.exists) await db.doc('players/' + uid).set({ joined: ts, name: '', online: true, lastActive: ts }, { merge: true });
+    await db.doc('accounts/' + uid).set(Object.assign({ email: Cloud.user.email, googleName: Cloud.user.name, lastLogin: ts }, prof.exists ? {} : { joined: ts }), { merge: true });
 
     // game data: the cloud copy wins; the first admin to sign in uploads theirs
     if (game.exists) localStorage.setItem(KEYS.data, game.data().json);
@@ -158,7 +166,7 @@ window.PP = window.PP || {};
     const batch = db.batch(), at = firebase.firestore.FieldValue.serverTimestamp();
     batch.set(db.doc('saves/' + uid), { json, device: DEVICE, at });
     batch.set(db.doc('players/' + uid), {
-      name: s.named ? s.name : '', level: s.level || 1, avatar: s.avatar || (partner ? partner.species : ''),
+      name: s.named ? s.name : '', nameKey: s.named ? nameKey(s.name) : '', level: s.level || 1, avatar: s.avatar || (partner ? partner.species : ''),
       badges: Object.keys(s.badges || {}).length, caught: Object.keys((s.dex || {}).caught || {}).length, at,
     }, { merge: true });
     return batch.commit().catch(e => { lastPushed = ''; console.warn('Save not uploaded', e); });
@@ -198,5 +206,9 @@ window.PP = window.PP || {};
   Cloud.signOut = async () => { await pushSave(true); await auth.signOut(); location.reload(); };
   Cloud.getAccess = async () => { const s = await db.doc('config/access').get(); const d = s.exists ? s.data() : {}; return { players: d.players || [], admins: d.admins || [] }; };
   Cloud.setAccess = a => db.doc('config/access').set({ players: a.players, admins: a.admins, at: firebase.firestore.FieldValue.serverTimestamp() });
-  Cloud.listPlayers = async () => (await db.collection('players').get()).docs.map(d => Object.assign({ uid: d.id }, d.data()));
+  Cloud.listPlayers = async () => {
+    const [players, accounts] = await Promise.all([db.collection('players').get(), db.collection('accounts').get()]);
+    const acc = Object.fromEntries(accounts.docs.map(d => [d.id, d.data()]));
+    return players.docs.map(d => Object.assign({ uid: d.id }, d.data(), { email: (acc[d.id] || {}).email || '', joined: d.data().joined || (acc[d.id] || {}).joined }));
+  };
 })();

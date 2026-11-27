@@ -381,18 +381,32 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const el = document.getElementById('onlineBody'); if (!el) return;
     try {
       const [acc, players] = await Promise.all([PP.Cloud.getAccess(), PP.Cloud.listPlayers()]);
-      players.sort((a, b) => ((b.at && b.at.seconds) || 0) - ((a.at && a.at.seconds) || 0));
-      el.innerHTML = panel('Who can sign in', `<div class="form-grid">
+      const t = v => v && typeof v.toMillis === 'function' ? v.toMillis() : v && v.seconds ? v.seconds * 1000 : 0;
+      const online = p => p.online && Date.now() - t(p.lastActive) < 3 * 60 * 1000;
+      const when = v => t(v) ? esc(ago(t(v))) : '—';
+      const dot = p => `<span class="odot${online(p) ? ' on' : ''}" title="${online(p) ? 'Online' : 'Offline'}"></span>`;
+      const joined = players.slice().sort((a, b) => t(b.joined) - t(a.joined)).slice(0, 10);
+      const played = players.slice().sort((a, b) => (online(b) - online(a)) || t(b.lastActive) - t(a.lastActive));
+      const name = p => `<b>${esc(p.name || '(choosing a name)')}</b>`;
+      el.innerHTML = `<div class="tiles" style="margin-bottom:18px">
+          <div class="tile"><small>Players</small><b>${players.length}</b></div>
+          <div class="tile"><small>Online now</small><b>${players.filter(online).length}</b></div>
+          <div class="tile"><small>Joined this week</small><b>${players.filter(p => Date.now() - t(p.joined) < 7 * 864e5).length}</b></div>
+        </div>`
+        + panel('Recently joined', joined.length ? `<table class="tbl"><thead><tr><th>Player</th><th>Google account</th><th class="r">Joined</th></tr></thead><tbody>
+          ${joined.map(p => `<tr><td>${dot(p)} ${name(p)}</td><td>${esc(p.email || '—')}</td><td class="r">${when(p.joined)}</td></tr>`).join('')}</tbody></table>`
+          : '<div class="empty-note">Nobody has joined yet.</div>', { flush: true })
+        + panel(`Players (${players.length})`, players.length ? `<table class="tbl"><thead><tr><th>Player</th><th class="r">Trainer Lv</th><th class="r">Badges</th><th class="r">Caught</th><th class="r">Last played</th></tr></thead><tbody>
+          ${played.map(p => `<tr><td>${dot(p)} ${name(p)}</td><td class="r tnum">${p.level || 1}</td><td class="r tnum">${p.badges || 0}</td><td class="r tnum">${p.caught || 0}</td>
+            <td class="r">${online(p) ? '<b style="color:#16a34a">Online now</b>' : when(p.lastActive || p.at)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-note">Nobody has played online yet.</div>', { flush: true })
+        + panel('Who can sign in', `<div class="form-grid">
           <div class="f"><label class="fl" for="accPlayers">Players (one email per line)</label>
             <textarea class="inp" id="accPlayers" rows="8" style="height:auto;padding:8px 11px" spellcheck="false">${esc(acc.players.join('\n'))}</textarea>
             <p class="fh">Friends' Google account emails. Anyone not listed sees “not on the friends list”.</p></div>
           <div class="f"><label class="fl" for="accAdmins">Admins (one email per line)</label>
             <textarea class="inp" id="accAdmins" rows="4" style="height:auto;padding:8px 11px" spellcheck="false">${esc(acc.admins.join('\n'))}</textarea>
             <p class="fh">Can open this admin and change the game for everyone. The owner email in firestore.rules always can.</p></div>
-        </div><div style="margin-top:12px">${btn('Save the list', 'access-save', { cls: 'btn-primary', icon: 'check' })}</div>`)
-        + panel(`Players (${players.length})`, players.length ? `<table class="tbl"><thead><tr><th>Name</th><th class="r">Trainer Lv</th><th class="r">Badges</th><th class="r">Caught</th><th class="r">Last played</th></tr></thead><tbody>
-          ${players.map(p => `<tr><td><b>${esc(p.name || '(no name yet)')}</b></td><td class="r tnum">${p.level || 1}</td><td class="r tnum">${p.badges || 0}</td><td class="r tnum">${p.caught || 0}</td>
-            <td class="r">${p.at && p.at.seconds ? esc(ago(p.at.seconds * 1000)) : '—'}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-note">Nobody has played online yet.</div>', { flush: true });
+        </div><div style="margin-top:12px">${btn('Save the list', 'access-save', { cls: 'btn-primary', icon: 'check' })}</div>`);
     } catch (e) { el.innerHTML = `<div class="empty-note">Couldn’t load the online data (${esc(e.code || e.message)}).</div>`; }
   }
   async function saveAccess() {
