@@ -1328,6 +1328,17 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     if ((e.key === 'Enter' || e.key === ' ') && e.target.id === 'questCard') { e.preventDefault(); openSheet('quests'); }
   });
 
+  // ---------------- no zooming on phones ----------------
+  // iOS Safari ignores the viewport's no-zoom setting, so double-taps and pinches are stopped here.
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTouchEnd < 320 && !e.target.closest('button, a, label, input, textarea, select, [data-do], [data-gate], [data-b]')) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+  document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+
   // ---------------- live sync with the admin ----------------
   S.onExternal(k => {
     if (k === 'data' || k === 'all') {

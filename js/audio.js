@@ -16,48 +16,52 @@ window.PP = window.PP || {};
   // ---------------- the built-in pieces ----------------
   // chords: one per bar. lead/arp/bass: `div` steps per beat; tokens: note, '-' hold, '.' rest.
   // bass tokens: R root, O octave up, 5 fifth. drums: 16 steps per bar ('x' = hit).
+  // In the style of the handheld monster-catching games of the 90s: two pulse channels (12.5 / 25 / 50% duty),
+  // a wave-channel bass and noise drums. Battle tracks have a short intro, then loop from `loop` (a bar number).
   const PIECES = {
     cozy: {
-      name: 'Meadow Home (cozy)', bpm: 88,
-      chords: ['F', 'Am', 'Bb', 'C', 'F', 'Dm', 'Bb', 'C'],
-      lead: { wave: 'triangle', vol: .22, div: 2, notes:
-        'A4 - C5 - A4 G4 F4 - | E4 - A4 - C5 - A4 G4 | F4 - D5 - C5 Bb4 A4 - | G4 - - - C5 - - . | ' +
-        'A4 - C5 - F5 - E5 D5 | C5 - A4 - D5 - C5 A4 | Bb4 - D5 - C5 - Bb4 A4 | G4 - A4 - G4 - - .' },
-      arp: { wave: 'sine', vol: .07, div: 4, oct: 4, pattern: [0, 1, 2, 1] },
-      bass: { wave: 'sine', vol: .2, div: 2, oct: 2, pattern: 'R - - . 5 - - .' },
-      pad: { wave: 'sine', vol: .035, oct: 4 },
-      drums: { vol: .25, hat: '....x.......x...' },
+      name: 'Hearthmoor Town (home)', bpm: 116, loop: 0,
+      chords: ['C', 'Am', 'F', 'G', 'C', 'Em', 'F', 'G'],
+      lead: { wave: 'pulse50', vol: .1, div: 2, vib: true, notes:
+        'G4 C5 E5 - D5 C5 D5 - | E5 - A4 - C5 - B4 A4 | A4 - F5 - E5 D5 C5 - | D5 - - - G4 - B4 D5 | ' +
+        'G5 - E5 - C5 E5 G5 - | B4 - E5 - G5 - E5 D5 | C5 - A4 - F5 - E5 D5 | D5 - B4 - G4 - - .' },
+      arp: { wave: 'pulse12', vol: .035, div: 4, oct: 5, pattern: [0, 1, 2, 3] },
+      bass: { wave: 'triangle', vol: .24, div: 2, oct: 3, pattern: 'R . 5 . O . 5 .' },
+      drums: { vol: .3, kick: 'x.......x.......', snare: '....x.......x...', hat: '..x...x...x...x.' },
     },
     wild: {
-      name: 'Tall Grass Clash (wild battle)', bpm: 152,
-      chords: ['Am', 'F', 'C', 'G', 'Am', 'F', 'G', 'E'],
-      lead: { wave: 'square', vol: .1, div: 2, notes:
-        'A4 . A4 C5 E5 - D5 C5 | D5 - C5 - A4 - F4 . | G4 . G4 C5 E5 - G5 E5 | D5 - - - B4 - G4 . | ' +
-        'A4 . A4 C5 E5 - A5 G5 | F5 - E5 - D5 - C5 . | B4 - D5 - G5 - F5 D5 | E5 - - - G#4 - B4 .' },
-      arp: { wave: 'triangle', vol: .06, div: 4, oct: 5, pattern: [0, 2, 1, 2] },
-      bass: { wave: 'triangle', vol: .26, div: 4, oct: 2, pattern: 'R . R . O . R . R . R . O . 5 .' },
-      drums: { vol: .5, kick: 'x.....x.x.......', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
+      name: 'Route Rumble (wild battle)', bpm: 172, loop: 2,
+      chords: ['E', 'E', 'Em', 'C', 'D', 'B', 'Em', 'C', 'Am', 'B'],
+      lead: { wave: 'pulse25', vol: .1, div: 2, vib: true, notes:
+        'E5 F5 F#5 G5 G#5 A5 A#5 B5 | E6 - - - . . B4 . | ' +
+        'B4 . E5 . G5 - F#5 E5 | G5 - E5 - C5 - E5 G5 | F#5 - D5 - A4 - D5 F#5 | F#5 - - - D#5 - B4 . | ' +
+        'E5 G5 B5 - A5 G5 F#5 G5 | E5 - - G5 C6 - B5 A5 | A5 - G5 - E5 - C5 E5 | D#5 - F#5 - B5 - A5 F#5' },
+      arp: { wave: 'pulse12', vol: .04, div: 4, oct: 4, pattern: [0, 2, 1, 2] },
+      bass: { wave: 'triangle', vol: .27, div: 4, oct: 2, pattern: 'R O R O R O R O 5 O 5 O R O R O' },
+      drums: { vol: .5, kick: 'x...x...x...x...', snare: '....x.......x..x', hat: 'x.x.x.x.x.x.x.x.' },
     },
     trainer: {
-      name: 'Rival Steps (trainer battle)', bpm: 168,
-      chords: ['Dm', 'Bb', 'C', 'A', 'Dm', 'Bb', 'Gm', 'A'],
-      lead: { wave: 'square', vol: .1, div: 2, notes:
-        'D5 . F5 . A5 - G5 F5 | F5 - D5 - Bb4 - D5 . | E5 . G5 . C6 - Bb5 A5 | A5 - - - C#5 - E5 . | ' +
-        'D5 F5 A5 F5 D6 - C6 A5 | Bb5 - A5 - F5 - D5 . | G5 - Bb5 - D6 - C6 Bb5 | A5 - G5 - E5 - C#5 .' },
-      arp: { wave: 'square', vol: .035, div: 4, oct: 4, pattern: [0, 1, 2, 3] },
-      bass: { wave: 'triangle', vol: .27, div: 4, oct: 2, pattern: 'R R . R O . R . R R . R 5 . O .' },
-      drums: { vol: .55, kick: 'x...x...x...x.x.', snare: '....x.......x...', hat: 'xxxxxxxxxxxxxxxx' },
+      name: 'Trainer Showdown (trainer battle)', bpm: 180, loop: 2,
+      chords: ['Am', 'Am', 'Am', 'F', 'G', 'E', 'Am', 'F', 'Dm', 'E'],
+      lead: { wave: 'pulse25', vol: .1, div: 2, vib: true, notes:
+        'A4 . A4 . A4 . C5 . | E5 . E5 . G5 - A5 . | ' +
+        'A5 - E5 - A5 - C6 B5 | A5 - F5 - C5 - F5 A5 | B5 - G5 - D5 - G5 B5 | G#5 - - - E5 - G#5 B5 | ' +
+        'C6 - B5 A5 E5 - A5 C6 | D6 - C6 A5 F5 - A5 C6 | D6 - A5 - F5 - D5 F5 | E5 - G#5 - B5 - D6 B5' },
+      arp: { wave: 'pulse12', vol: .035, div: 4, oct: 4, pattern: [0, 1, 2, 1] },
+      bass: { wave: 'triangle', vol: .28, div: 4, oct: 2, pattern: 'R R O R R R O R R R O R 5 5 O 5' },
+      drums: { vol: .55, kick: 'x..x..x.x..x..x.', snare: '....x.......x...', hat: 'xxxxxxxxxxxxxxxx' },
     },
     gym: {
-      name: 'Leader’s Arena (Gym Leader, epic)', bpm: 138,
-      chords: ['Cm', 'Ab', 'Bb', 'G', 'Cm', 'Ab', 'Fm', 'G'],
-      lead: { wave: 'square', vol: .1, div: 2, double: -12, notes:
-        'C5 - - Eb5 G5 - - C6 | Bb5 - Ab5 - G5 - Eb5 . | F5 - - Bb4 D5 - F5 - | G5 - - - - - B4 D5 | ' +
-        'C6 - Bb5 - G5 - Eb5 G5 | Ab5 - - - C6 - Ab5 . | F5 - Ab5 - C6 - Bb5 Ab5 | G5 - - - B5 - D6 .' },
-      arp: { wave: 'triangle', vol: .06, div: 4, oct: 4, pattern: [0, 1, 2, 1] },
-      bass: { wave: 'sawtooth', vol: .12, div: 4, oct: 2, pattern: 'R . . R O . R . R . . R O . 5 .' },
-      pad: { wave: 'sawtooth', vol: .025, oct: 3, cutoff: 1400 },
-      drums: { vol: .6, kick: 'x..x..x.x..x..x.', snare: '....x.......x..x', hat: 'x.x.x.x.x.x.x.x.', tom: '..............xx' },
+      name: 'Badge on the Line (Gym Leader, epic)', bpm: 158, loop: 2,
+      chords: ['Dm', 'A', 'Dm', 'Bb', 'C', 'A', 'Dm', 'Bb', 'Gm', 'A'],
+      lead: { wave: 'pulse50', vol: .09, div: 2, vib: true, double: -12, notes:
+        'D5 - D5 D5 F5 - A5 - | A5 - - - C#6 - E6 . | ' +
+        'D6 - - A5 F5 - D5 F5 | F5 - D5 - Bb5 - A5 G5 | G5 - - E5 C6 - Bb5 A5 | A5 - - - C#6 - E6 - | ' +
+        'F6 - E6 D6 A5 - D6 F6 | D6 - - Bb5 F5 - Bb5 D6 | G6 - F6 - D6 - Bb5 G5 | A5 - C#6 - E6 - A6 .' },
+      arp: { wave: 'pulse25', vol: .035, div: 4, oct: 4, pattern: [0, 1, 2, 1] },
+      bass: { wave: 'sawtooth', vol: .12, div: 4, oct: 2, pattern: 'R . R O R . R O R . R O 5 . O .' },
+      pad: { wave: 'sawtooth', vol: .022, oct: 3, cutoff: 1300 },
+      drums: { vol: .6, kick: 'x...x.x.x...x.x.', snare: '....x.......x..x', hat: 'x.x.x.x.x.x.x.x.', tom: '..........xx.xxx' },
     },
   };
   const NOTE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -107,7 +111,13 @@ window.PP = window.PP || {};
   /** a single note with an envelope */
   function tone(bus, f, t, dur, o) {
     const osc = ctx.createOscillator(), g = ctx.createGain();
-    osc.type = o.wave || 'square'; osc.frequency.setValueAtTime(f, t);
+    if (/^pulse/.test(o.wave || '')) osc.setPeriodicWave(pulse(Number(o.wave.slice(5)) / 100)); else osc.type = o.wave || 'square';
+    osc.frequency.setValueAtTime(f, t);
+    if (o.vib && dur > .22) {          // a little delayed vibrato on held notes, like the old handhelds
+      const lfo = ctx.createOscillator(), depth = ctx.createGain();
+      lfo.frequency.value = 5.5; depth.gain.setValueAtTime(0, t); depth.gain.linearRampToValueAtTime(f * .012, t + .18);
+      lfo.connect(depth); depth.connect(osc.frequency); lfo.start(t); lfo.stop(t + dur + .05);
+    }
     if (o.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.slide), t + dur);
     const a = o.attack || .008, r = Math.min(o.release || .06, dur), v = o.vol || .2;
     g.gain.setValueAtTime(0.0001, t);
@@ -118,6 +128,14 @@ window.PP = window.PP || {};
     if (o.cutoff) { const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = o.cutoff; g.connect(lp); out = lp; }
     osc.connect(g); out.connect(bus);
     osc.start(t); osc.stop(t + dur + .05);
+  }
+  const waves = {};
+  /** a pulse wave with the given duty cycle (0.125, 0.25, 0.5) */
+  function pulse(d) {
+    if (waves[d]) return waves[d];
+    const n = 48, re = new Float32Array(n), im = new Float32Array(n);
+    for (let k = 1; k < n; k++) { re[k] = Math.sin(2 * Math.PI * k * d) / (k * Math.PI); im[k] = (1 - Math.cos(2 * Math.PI * k * d)) / (k * Math.PI); }
+    return (waves[d] = ctx.createPeriodicWave(re, im));
   }
   function hit(bus, t, o) {
     const src = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
@@ -161,8 +179,8 @@ window.PP = window.PP || {};
           const idx = bar * 4 * P.lead.div + s / per, tok = lead[idx % lead.length], m = midi(tok);
           if (m != null) {
             const dur = span(lead, idx, per * step) * .92;
-            tone(bus, hz(m), t, dur, { wave: P.lead.wave, vol: P.lead.vol, release: .08 });
-            if (P.lead.double) tone(bus, hz(m + P.lead.double), t, dur, { wave: 'triangle', vol: P.lead.vol * .9, release: .08 });
+            tone(bus, hz(m), t, dur, { wave: P.lead.wave, vol: P.lead.vol, release: .08, vib: P.lead.vib });
+            if (P.lead.double) tone(bus, hz(m + P.lead.double), t, dur, { wave: 'pulse12', vol: P.lead.vol * .8, release: .08 });
           }
         }
       }
@@ -189,7 +207,7 @@ window.PP = window.PP || {};
     }
     const timer = setInterval(() => {
       if (!alive) return;
-      while (next < ctx.currentTime + .15) { schedule(i, next); next += step; i = (i + 1) % total; }
+      while (next < ctx.currentTime + .15) { schedule(i, next); next += step; i++; if (i >= total) i = (P.loop || 0) * 16; }   // the intro plays once
     }, 25);
     return { id, stop() { alive = false; clearInterval(timer); bus.gain.setTargetAtTime(0, ctx.currentTime, .12); setTimeout(() => bus.disconnect(), 800); } };
   }
@@ -204,13 +222,13 @@ window.PP = window.PP || {};
     faint: t => tone(sfxBus, 620, t, .7, { wave: 'square', slide: 70, vol: .22, release: .3 }),
     throw: t => tone(sfxBus, 300, t, .32, { wave: 'sine', slide: 1000, vol: .22 }),
     shake: t => { tone(sfxBus, 260, t, .05, { wave: 'square', vol: .18 }); tone(sfxBus, 200, t + .07, .05, { wave: 'square', vol: .15 }); },
-    catch: t => [72, 76, 79, 84].forEach((m, k) => tone(sfxBus, hz(m), t + k * .09, .12, { wave: 'square', vol: .18 })),
+    catch: t => [72, 76, 79, 84].forEach((m, k) => tone(sfxBus, hz(m), t + k * .09, .12, { wave: 'pulse25', vol: .2 })),
     breakout: t => [76, 71].forEach((m, k) => tone(sfxBus, hz(m), t + k * .1, .12, { wave: 'square', vol: .18 })),
     heal: t => [72, 76, 79, 84, 88].forEach((m, k) => tone(sfxBus, hz(m), t + k * .07, .22, { wave: 'sine', vol: .18 })),
-    levelup: t => [[67, 0], [72, .1], [76, .2], [79, .3], [84, .4]].forEach(([m, d]) => tone(sfxBus, hz(m), t + d, d === .4 ? .4 : .1, { wave: 'square', vol: .16 })),
+    levelup: t => [[67, 0], [72, .1], [76, .2], [79, .3], [84, .4]].forEach(([m, d]) => tone(sfxBus, hz(m), t + d, d === .4 ? .4 : .1, { wave: 'pulse50', vol: .16 })),
     run: t => [0, .08, .16].forEach(d => tone(sfxBus, 500, t + d, .07, { wave: 'triangle', slide: 900, vol: .14 })),
     victory: t => [[72, 0, .12], [72, .14, .12], [72, .28, .12], [76, .42, .5], [74, .95, .12], [76, 1.1, .12], [79, 1.25, .7]]
-      .forEach(([m, d, l]) => { tone(sfxBus, hz(m), t + d, l, { wave: 'square', vol: .14 }); tone(sfxBus, hz(m - 12), t + d, l, { wave: 'triangle', vol: .16 }); }),
+      .forEach(([m, d, l]) => { tone(sfxBus, hz(m), t + d, l, { wave: 'pulse25', vol: .15 }); tone(sfxBus, hz(m - 12), t + d, l, { wave: 'triangle', vol: .16 }); }),
     lose: t => [[67, 0], [63, .25], [60, .5]].forEach(([m, d]) => tone(sfxBus, hz(m), t + d, .3, { wave: 'triangle', vol: .2 })),
     coin: t => { tone(sfxBus, 988, t, .07, { wave: 'square', vol: .12 }); tone(sfxBus, 1319, t + .07, .2, { wave: 'square', vol: .12 }); },
     click: t => tone(sfxBus, 1200, t, .03, { wave: 'square', vol: .06 }),

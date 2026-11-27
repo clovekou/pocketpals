@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 11,
+  contentVersion: 12,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -34,6 +34,10 @@ PP.SCHEMA = {
     // the first rival battle can't be lost
     { v: 9, collection: 'trainers', ids: ['kai-1'], set: { mustWin: true } },
     { v: 10, collection: 'trainers', ids: ['kai-1'], set: { noSuperEffective: true } },
+    { v: 12, collection: 'music', ids: ['home-cozy'], set: { name: 'Home: Hearthmoor Town' } },
+    { v: 12, collection: 'music', ids: ['battle-wild'], set: { name: 'Wild battle: Route Rumble' } },
+    { v: 12, collection: 'music', ids: ['battle-trainer'], set: { name: 'Trainer battle: Trainer Showdown' } },
+    { v: 12, collection: 'music', ids: ['battle-gym'], set: { name: 'Gym Leader: Badge on the Line' } },
   ],
   // One-time setting changes applied to saved data older than `v` (new defaults that should win over
   // values saved before they existed). The admin can change them again afterwards.
@@ -187,16 +191,16 @@ PP.SCHEMA = {
         { key: 'id', label: 'ID', type: 'id' },
         { key: 'name', label: 'Name', type: 'text', def: 'New track', max: 40 },
         { key: 'enabled', label: 'On', type: 'bool', def: true },
-        { key: 'style', label: 'Built-in piece', type: 'select', def: 'cozy', options: [['cozy', 'Meadow Home (cozy)'], ['wild', 'Tall Grass Clash (wild battle)'], ['trainer', 'Rival Steps (trainer battle)'], ['gym', 'Leader’s Arena (Gym Leader, epic)']] },
+        { key: 'style', label: 'Built-in piece', type: 'select', def: 'cozy', options: [['cozy', 'Hearthmoor Town (home)'], ['wild', 'Route Rumble (wild battle)'], ['trainer', 'Trainer Showdown (trainer battle)'], ['gym', 'Badge on the Line (Gym Leader, epic)']] },
         { key: 'file', label: 'Your own audio file (optional)', type: 'text', def: '', max: 200, help: 'e.g. assets/music/home.mp3. Put the file in the project folder. Leave empty to use the built-in piece. It loops.' },
         { key: 'tempo', label: 'Speed (built-in piece)', type: 'int', min: 50, max: 200, def: 100, suffix: '%' },
         { key: 'volume', label: 'Volume', type: 'int', min: 0, max: 150, def: 100, suffix: '%' },
       ],
       rows: [
-        { id: 'home-cozy', name: 'Home: Meadow Home', enabled: true, style: 'cozy', file: '', tempo: 100, volume: 100 },
-        { id: 'battle-wild', name: 'Wild battle: Tall Grass Clash', enabled: true, style: 'wild', file: '', tempo: 100, volume: 100 },
-        { id: 'battle-trainer', name: 'Trainer battle: Rival Steps', enabled: true, style: 'trainer', file: '', tempo: 100, volume: 100 },
-        { id: 'battle-gym', name: 'Gym Leader: Leader’s Arena', enabled: true, style: 'gym', file: '', tempo: 100, volume: 100 },
+        { id: 'home-cozy', name: 'Home: Hearthmoor Town', enabled: true, style: 'cozy', file: '', tempo: 100, volume: 100 },
+        { id: 'battle-wild', name: 'Wild battle: Route Rumble', enabled: true, style: 'wild', file: '', tempo: 100, volume: 100 },
+        { id: 'battle-trainer', name: 'Trainer battle: Trainer Showdown', enabled: true, style: 'trainer', file: '', tempo: 100, volume: 100 },
+        { id: 'battle-gym', name: 'Gym Leader: Badge on the Line', enabled: true, style: 'gym', file: '', tempo: 100, volume: 100 },
       ],
     },
 
