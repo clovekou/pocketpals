@@ -8,15 +8,29 @@
     // so the game keeps its buttons above it (see --sab in css/base.css)
     if (/iP(hone|od|ad)/.test(navigator.userAgent) && !navigator.standalone && !(window.matchMedia && matchMedia('(display-mode: standalone)').matches))
       document.documentElement.classList.add('ios-browser');
+    // Home Screen app on iOS: the page draws under the clock but the screen is reported one status bar
+    // shorter, which leaves an empty strip at the bottom. Measure it and stretch the game over it.
+    (function () {
+      const standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+      if (!standalone) return;
+      const fit = () => {
+        const tall = window.innerHeight > window.innerWidth, sh = tall ? Math.max(screen.height, screen.width) : Math.min(screen.height, screen.width);
+        const gap = Math.round(sh - window.innerHeight);
+        document.documentElement.style.setProperty('--gapfix', (gap > 0 && gap < 140 ? gap : 0) + 'px');
+      };
+      fit();
+      window.addEventListener('resize', fit);
+      window.addEventListener('orientationchange', () => setTimeout(fit, 300));
+    })();
   </script>
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Pocket Pals">
   <title>Pocket Pals</title>
-  <link rel="stylesheet" href="css/base.css?v=30">
-  <link rel="stylesheet" href="css/game.css?v=30">
-  <link rel="stylesheet" href="css/battle.css?v=30">
+  <link rel="stylesheet" href="css/base.css?v=31">
+  <link rel="stylesheet" href="css/game.css?v=31">
+  <link rel="stylesheet" href="css/battle.css?v=31">
 </head>
 <body>
   <div class="app" id="app">
@@ -88,21 +102,21 @@
     </div>
   </div>
 
-  <script src="js/icons.js?v=30"></script>
-  <script src="js/catalog-items.js?v=30"></script>
-  <script src="js/catalog-pokemon.js?v=30"></script>
-  <script src="js/content-lumera.js?v=30"></script>
-  <script src="js/schema.js?v=30"></script>
-  <script src="js/store.js?v=30"></script>
-  <script src="js/sprite.js?v=30"></script>
-  <script src="js/online/firebase-config.js?v=30"></script>
-  <script src="js/online/cloud.js?v=30"></script>
-  <script src="js/online/social.js?v=30"></script>
-  <script src="js/engine/progression.js?v=30"></script>
-  <script src="js/engine/encounters.js?v=30"></script>
-  <script src="js/audio.js?v=30"></script>
-  <script src="js/battle.js?v=30"></script>
-  <script src="js/engine/story.js?v=30"></script>
-  <script src="js/game.js?v=30"></script>
+  <script src="js/icons.js?v=31"></script>
+  <script src="js/catalog-items.js?v=31"></script>
+  <script src="js/catalog-pokemon.js?v=31"></script>
+  <script src="js/content-lumera.js?v=31"></script>
+  <script src="js/schema.js?v=31"></script>
+  <script src="js/store.js?v=31"></script>
+  <script src="js/sprite.js?v=31"></script>
+  <script src="js/online/firebase-config.js?v=31"></script>
+  <script src="js/online/cloud.js?v=31"></script>
+  <script src="js/online/social.js?v=31"></script>
+  <script src="js/engine/progression.js?v=31"></script>
+  <script src="js/engine/encounters.js?v=31"></script>
+  <script src="js/audio.js?v=31"></script>
+  <script src="js/battle.js?v=31"></script>
+  <script src="js/engine/story.js?v=31"></script>
+  <script src="js/game.js?v=31"></script>
 </body>
 </html>

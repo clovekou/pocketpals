@@ -12,7 +12,7 @@ body { background: #0e1630; -webkit-tap-highlight-color: transparent; overscroll
 /* phones: pin the game to every edge of the screen (a 100dvh height comes up one status bar short
    when the game is opened from the Home Screen and draws under the clock) */
 @media (max-width: 519.98px) {
-  .app { position: fixed; inset: 0; width: auto; height: auto; max-width: none; }
+  .app { position: fixed; inset: 0; bottom: calc(-1 * var(--gapfix, 0px)); width: auto; height: auto; max-width: none; }
 }
 /* on tablets and computers the game stays a phone: a 9 × 19.5 frame that fits the window */
 @media (min-width: 520px) {
