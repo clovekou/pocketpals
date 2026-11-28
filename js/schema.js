@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 24,
+  contentVersion: 25,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -87,6 +87,7 @@ PP.SCHEMA = {
       { key: 'exploreNeed', label: 'Need that exploring uses up', type: 'select', optionsFrom: 'needs', def: 'energy' },
       { key: 'exploreCooldownSec', label: 'Wait between explores', type: 'int', min: 0, max: 86400, def: 5, suffix: 'sec' },
       { key: 'walkOn', label: 'Walk along a path when exploring', type: 'bool', def: true, help: 'Your partner walks across the area’s path picture; wild Pokémon jump out on the way, and reaching the end finishes the explore.' },
+      { key: 'walkGround', label: 'Where your Pokémon walks on the path picture', type: 'int', min: 40, max: 95, def: 67, suffix: '% down', help: 'Height of its feet on the explore path picture.' },
       { key: 'walkSeconds', label: 'Time to walk the whole path', type: 'int', min: 4, max: 120, def: 16, suffix: 'sec' },
       { key: 'walkStops', label: 'Places a wild Pokémon can appear', type: 'int', min: 1, max: 10, def: 4, help: 'Each place rolls the area’s wild Pokémon chance.' },
       { key: 'walkMaxBattles', label: 'Most wild battles per walk', type: 'int', min: 0, max: 10, def: 2 },
@@ -118,6 +119,10 @@ PP.SCHEMA = {
       { key: 'partnerExpShare', label: 'Care EXP the partner also gets', type: 'int', min: 0, max: 500, def: 100, suffix: '%', help: 'Care actions, items and explores give trainer EXP; the partner Pokémon gets this share as its own EXP.' },
       { key: 'petScale', label: 'Pokémon size on screen', type: 'number', min: 1, max: 8, step: 0.5, def: 3, suffix: '× pixels', help: 'Each sprite pixel is drawn this many screen pixels wide. Each Pokémon can also have its own size.' },
       { key: 'petGround', label: 'Where it stands', type: 'int', min: 30, max: 95, def: 66, suffix: '% down', help: 'Height of its feet in the play area.' },
+      { key: 'buddiesOn', label: 'Show the rest of the team on the home screen', type: 'bool', def: true, help: 'Your other team Pokémon play further back: they walk, nap and chat with each other.' },
+      { key: 'buddyScale', label: 'Team size on screen', type: 'int', min: 30, max: 100, def: 72, suffix: '% of the main', help: 'Smaller looks further away.' },
+      { key: 'buddyTop', label: 'Team area: top', type: 'int', min: 20, max: 90, def: 40, suffix: '% down' },
+      { key: 'buddyBottom', label: 'Team area: bottom', type: 'int', min: 20, max: 95, def: 53, suffix: '% down' },
       { key: 'petWander', label: 'Walks around by itself', type: 'bool', def: true },
       { key: 'petWalkSpeed', label: 'Walking speed', type: 'int', min: 5, max: 100, def: 30 },
       { key: 'petRestMin', label: 'Rests at least', type: 'int', min: 0, max: 120, def: 5, suffix: 'sec', help: 'How long it stands still after each walk (1.5× longer at the sides).' },

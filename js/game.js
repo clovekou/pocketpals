@@ -334,8 +334,9 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       g.drawImage(im, -cam, top, W, IH);
       const walking = !w.paused && !w.done && $('battleLayer').hidden;
       const size = (w.sp.size || 100) / 100, scale = Math.max(2, IH / 240) * size;
-      PP.Sprite.draw(g, w.sp.folder, { x: wx - cam, y: top + IH * .79, scale, t: now / 1000, anim: walking ? 'Walk' : 'Idle', dir: 'right' });
-      const b = $('walkBang'); if (b && !b.hidden) { b.style.left = (wx - cam) + 'px'; b.style.top = (top + IH * .79 - 30 * scale) + 'px'; }
+      const gy = top + IH * data.settings.walkGround / 100;          // feet on the grass strip (Game settings → Exploring)
+      PP.Sprite.draw(g, w.sp.folder, { x: wx - cam, y: gy, scale, t: now / 1000, anim: walking ? 'Walk' : 'Idle', dir: 'right' });
+      const b = $('walkBang'); if (b && !b.hidden) { b.style.left = (wx - cam) + 'px'; b.style.top = (gy - 30 * scale) + 'px'; }
     } else { g.fillStyle = '#0b0f1a'; g.fillRect(0, 0, r.width, H); }
     const pr = $('walkProg'); if (pr) pr.style.width = (w.p * 100) + '%';
     nextWalkFrame();
@@ -623,6 +624,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       }
     } else if (!P.walking && P.nextMove < t) P.nextMove = t + 2;
     petCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (s.buddiesOn) drawBuddies(t, dt, W, H, talking);
     const scale = s.petScale * sp.size / 100, x = P.x * W, y = s.petGround / 100 * H;
     const box = PP.Sprite.idleBox(sp.folder);
     // soft shadow under its feet
@@ -634,6 +636,76 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const done = PP.Sprite.draw(petCtx, sp.folder, { x, y, scale, t: at, anim: name, dir, once });
     if (P.act && (P.act.loop ? at > P.act.dur : done)) P.act = null;
     placeReact(t, x, y, box.h * scale, W);
+  }
+  // ---------------- the rest of the team, playing further back ----------------
+  const BUD = {};                       // uid → { x, y, tx, ty, dir, mode: idle|walk|sleep|chat, until, with, bubble, hop }
+  const BUBBLES = ['…', '♪', '♥', '!', '?', '☆'];
+  const budList = () => teamEntries().slice(1, data.settings.teamMax).map(e => ({ e, sp: speciesOf(e.species) })).filter(b => b.sp && PP.Sprite.has(b.sp.folder));
+  function budBox(b, W, H) {
+    const s = data.settings, st = BUD[b.e.uid];
+    const y = (s.buddyTop + (Math.max(s.buddyTop, s.buddyBottom) - s.buddyTop) * st.y) / 100 * H;
+    return { x: st.x * W, y, scale: s.petScale * b.sp.size / 100 * s.buddyScale / 100 * (0.92 + st.y * 0.16) };
+  }
+  function drawBuddies(t, dt, W, H, still) {
+    const s = data.settings, list = budList(), ids = new Set(list.map(b => b.e.uid));
+    Object.keys(BUD).forEach(u => { if (!ids.has(u)) delete BUD[u]; });
+    list.forEach((b, i) => {
+      if (!BUD[b.e.uid]) { BUD[b.e.uid] = { x: 0.14 + (i / Math.max(1, list.length - 1 || 1)) * 0.72 + (Math.random() - .5) * .06, y: Math.random(), tx: 0, ty: 0, dir: Math.random() < .5 ? 'downleft' : 'downright', mode: 'idle', until: t + 1 + Math.random() * 4, with: null, bubble: '', hop: 0 };
+        PP.Sprite.preload(b.sp.folder, ['Idle', 'Walk', 'Sleep', 'Hop']); }
+    });
+    const speed = s.petWalkSpeed / 300 * 0.7 * dt;
+    list.forEach(b => {
+      const st = BUD[b.e.uid];
+      if (still) return;
+      if (st.mode === 'walk' || (st.mode === 'chat' && !st.met)) {
+        const dx = st.tx - st.x, dy = st.ty - st.y, d = Math.hypot(dx, dy * .5);
+        if (d > 0.006) { const k = Math.min(1, speed / d); st.x += dx * k; st.y += dy * k; st.dir = dx < 0 ? 'left' : 'right'; st.walking = true; }
+        else { st.walking = false; if (st.mode === 'chat') { st.met = true; st.until = t + 4 + Math.random() * 3; } else { st.mode = 'idle'; st.until = t + 2 + Math.random() * 5; } st.dir = st.dir === 'left' ? 'downleft' : 'downright'; }
+      }
+      if (st.mode === 'chat' && st.met) {                     // face the friend; little speech bubbles back and forth
+        const o = BUD[st.with]; if (o) st.dir = o.x < st.x ? 'downleft' : 'downright';
+        st.bubble = Math.floor(t * 0.8 + (st.side || 0)) % 2 === 0 ? (st.word || '…') : '';
+      } else st.bubble = '';
+      if (t > st.until && !st.walking) {
+        if (st.mode === 'chat' && st.with && BUD[st.with]) { const o = BUD[st.with]; o.mode = 'idle'; o.with = null; o.until = t + 2 + Math.random() * 3; }
+        st.with = null; st.met = false;
+        const r = Math.random(), free = list.filter(o => o.e.uid !== b.e.uid && ['idle', 'walk'].includes(BUD[o.e.uid].mode) && !BUD[o.e.uid].walking);
+        if (r < 0.18) { st.mode = 'sleep'; st.until = t + 8 + Math.random() * 10; }
+        else if (r < 0.42 && free.length) {                   // walk over to a friend and chat
+          const o = BUD[free[Math.floor(Math.random() * free.length)].e.uid];
+          const sideOf = o.x > 0.5 ? -1 : 1;
+          st.mode = 'chat'; st.with = free.find(f => BUD[f.e.uid] === o).e.uid; st.tx = Math.max(0.08, Math.min(0.92, o.x + sideOf * 0.12)); st.ty = o.y; st.met = false;
+          st.word = BUBBLES[Math.floor(Math.random() * BUBBLES.length)]; st.side = 0;
+          o.mode = 'chat'; o.with = b.e.uid; o.met = true; o.walking = false; o.tx = o.x; o.ty = o.y; o.until = t + 12; o.word = BUBBLES[Math.floor(Math.random() * BUBBLES.length)]; o.side = 1;
+        } else if (r < 0.8) { st.mode = 'walk'; st.tx = 0.08 + Math.random() * 0.84; st.ty = Math.random(); }
+        else { st.mode = 'idle'; st.until = t + 3 + Math.random() * 5; }
+      }
+    });
+    // back to front, so nearer ones overlap further ones
+    list.slice().sort((a, b) => BUD[a.e.uid].y - BUD[b.e.uid].y).forEach(b => {
+      const st = BUD[b.e.uid], p = budBox(b, W, H), box = PP.Sprite.idleBox(b.sp.folder);
+      petCtx.fillStyle = 'rgba(0,0,0,.14)';
+      petCtx.beginPath(); petCtx.ellipse(p.x, p.y - 1, box.w * p.scale * 0.3, box.w * p.scale * 0.08, 0, 0, Math.PI * 2); petCtx.fill();
+      const hopping = st.hop && t - st.hop < 1;
+      const anim = hopping ? 'Hop' : st.walking ? 'Walk' : st.mode === 'sleep' ? 'Sleep' : 'Idle';
+      PP.Sprite.draw(petCtx, b.sp.folder, { x: p.x, y: p.y, scale: p.scale, t: hopping ? t - st.hop : t + b.e.level, anim, dir: st.walking ? st.dir : (st.dir === 'left' || st.dir === 'downleft' ? 'downleft' : 'downright'), once: hopping });
+      const head = p.y - box.h * p.scale - 4;
+      if (st.mode === 'sleep') {                              // floating z's
+        petCtx.fillStyle = 'rgba(255,255,255,.92)'; petCtx.strokeStyle = 'rgba(30,40,70,.55)'; petCtx.lineWidth = 3;
+        [0, 1, 2].forEach(k => { const ph = (t * 0.6 + k / 3) % 1, fs = 10 + k * 3;
+          petCtx.globalAlpha = Math.sin(ph * Math.PI); petCtx.font = `800 ${fs}px system-ui, sans-serif`;
+          const zx = p.x + 8 + ph * 14, zy = head - ph * 22; petCtx.strokeText('z', zx, zy); petCtx.fillText('z', zx, zy); });
+        petCtx.globalAlpha = 1;
+      }
+      if (st.bubble) {                                        // a little speech bubble
+        const bx = p.x + (st.dir === 'downleft' ? -10 : 10), by = head - 6, w = 24, h = 20;
+        petCtx.fillStyle = '#fff'; petCtx.strokeStyle = 'rgba(20,30,50,.25)'; petCtx.lineWidth = 1;
+        petCtx.beginPath(); if (petCtx.roundRect) petCtx.roundRect(bx - w / 2, by - h, w, h, 8); else petCtx.rect(bx - w / 2, by - h, w, h); petCtx.fill(); petCtx.stroke();
+        petCtx.beginPath(); petCtx.moveTo(bx - 3, by); petCtx.lineTo(bx + 3, by); petCtx.lineTo(bx, by + 5); petCtx.fill();
+        petCtx.fillStyle = st.word === '♥' ? '#e5484d' : '#2b3550'; petCtx.font = '800 13px system-ui, sans-serif'; petCtx.textAlign = 'center';
+        petCtx.fillText(st.bubble, bx, by - 5); petCtx.textAlign = 'start';
+      }
+    });
   }
   function drawStarters(t) {
     document.querySelectorAll('.starter-cv').forEach(cv => {
@@ -651,7 +723,17 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const r = petCanvas.getBoundingClientRect(), { x, y } = petPos();
     const box = PP.Sprite.idleBox(sp.folder), sc = data.settings.petScale * sp.size / 100;
     const px = e.clientX - r.left, py = e.clientY - r.top;
-    if (Math.abs(px - x) < box.w * sc * 0.6 && py < y + 10 && py > y - box.h * sc - 10) { playAnim('Hop'); react(data.settings.emoTap); }
+    if (Math.abs(px - x) < box.w * sc * 0.6 && py < y + 10 && py > y - box.h * sc - 10) { playAnim('Hop'); react(data.settings.emoTap); return; }
+    if (!data.settings.buddiesOn) return;
+    const W = r.width, H = r.height, t = performance.now() / 1000;
+    for (const b of budList()) {
+      const st = BUD[b.e.uid]; if (!st) continue;
+      const p = budBox(b, W, H), bb = PP.Sprite.idleBox(b.sp.folder);
+      if (Math.abs(px - p.x) < bb.w * p.scale * 0.6 && py < p.y + 8 && py > p.y - bb.h * p.scale - 8) {
+        st.hop = t; if (st.mode === 'sleep') { st.mode = 'idle'; st.until = t + 3; }
+        PP.Audio.cry(b.sp.folder, false, b.sp.id); return;
+      }
+    }
   });
 
   // ---------------- reaction bubbles ----------------
