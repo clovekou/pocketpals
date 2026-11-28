@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 23,
+  contentVersion: 24,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -53,6 +53,7 @@ PP.SCHEMA = {
     { v: 3, set: { homeBackground: 'green-meadow', tabPals: 'Pokemon', tabParty: 'Friends' } },
     { v: 5, set: { expGrowth: 1.06 } },
     { v: 13, set: { professorName: 'Professor Kou' } },
+    { v: 24, set: { showLocation: false } },                     // the area card is off the home screen
     { v: 22, set: { professorImage: 'assets/characters/professor-kou-face.png', professorFullImage: 'assets/characters/professor-kou.png' } },
     { v: 17, set: { cryFolder: 'https://veekun.com/dex/media/pokemon/cries/' } },      // cries rebuilt: sprite folder number → veekun .ogg
   ],
@@ -173,7 +174,7 @@ PP.SCHEMA = {
       { key: 'careLabel', label: 'Care menu button label', type: 'text', def: 'Care', max: 12 },
       { key: 'careStartOpen', label: 'Care menu starts open', type: 'bool', def: false, help: 'Whether the care actions are already showing when the game opens.' },
       { key: 'showQuest', label: 'Show quest card', type: 'bool', def: true },
-      { key: 'showLocation', label: 'Show area card', type: 'bool', def: true },
+      { key: 'showLocation', label: 'Show area card', type: 'bool', def: false, help: 'The small card on the home screen with your current area and how many areas are open.' },
       { key: 'exploreOpen', label: 'Exploring open', type: 'bool', def: true },
       { key: 'shopOpen', label: 'Shop open', type: 'bool', def: true },
       { key: 'tabBag', label: 'Tab name: Bag', type: 'text', def: 'Bag', max: 12 },
