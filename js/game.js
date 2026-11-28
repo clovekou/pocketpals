@@ -18,6 +18,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     ['trainers', 'storySteps', 'chapters', 'quests', 'locations'].forEach(k => (d[k] || []).forEach(r => TEXT.forEach(f => { if (f in r) r[f] = swap(r[f]); })));
     return d;
   }
+  let questOpen = (() => { try { return localStorage.getItem('pp2.questOpen') === '1'; } catch (e) { return false; } })();   // the home quest card starts folded
   let data = S.loadData();
   let save = S.loadSave(data);
   data = personalize(data, save.rivalName);
@@ -1100,13 +1101,16 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     // quest card
     const q = s.showQuest ? currentQuest() : null;
     const st = q && questState(q);
-    const qSig = q ? [q.id, q.kind, q.title, q.description, st.progress, q.target, st.done].join('|') : 'none';
+    const qSig = q ? [q.id, q.kind, q.title, q.description, st.progress, q.target, st.done, questOpen].join('|') : 'none';
     if (sig.quest !== qSig) {
       sig.quest = qSig;
       const card = $('questCard');
       card.hidden = !q;
       card.classList.toggle('done', !!(st && st.done));
-      if (q) card.innerHTML = `
+      card.classList.toggle('mini', !!q && !questOpen);
+      if (q && !questOpen) card.innerHTML = `<button class="q-fab" data-do="quest-toggle" aria-label="Show your quest: ${esc(q.title)}">${I('flag')}
+          <span class="q-fab-badge${st.done ? ' ready' : ''}">${st.done ? '!' : `${Math.round(st.progress / q.target * 100)}%`}</span></button>`;
+      else if (q) card.innerHTML = `<button class="q-close" data-do="quest-toggle" aria-label="Fold the quest card">${I('close')}</button><div class="q-open" data-do="sheet" data-kind="quests">
         <div class="q-head"><span class="q-ic">${I('flag')}</span>${esc(kindLabel(q.kind))} quest</div>
         <div class="q-title">${esc(q.title)}</div>
         ${q.description ? `<div class="q-desc">${esc(q.description)}</div>` : ''}
@@ -1114,7 +1118,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
           ${st.done ? `<button class="btn btn-primary btn-sm" data-do="claim" data-id="${esc(q.id)}">${I('check')}Claim reward</button><span style="flex:1"></span>`
                     : `<div class="bar" style="--c:var(--gold)"><i style="width:${st.progress / q.target * 100}%"></i></div><span class="q-count tnum">${fmt(st.progress)}/${fmt(q.target)}</span>`}
           ${I('chevron')}
-        </div>`;
+        </div></div>`;
     }
   }
 
@@ -1127,7 +1131,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
 
   // ---- shop: category tabs + search + 3-column grid ----
   let shopCat = null, shopQuery = '';
-  let exploreRegion = null, palsView = 'box', exploreTab = 'story', questTab = null;
+  let exploreRegion = null, palsView = 'box', exploreTab = 'story', questTab = null, storyAll = false;
   const shopItems = () => data.items.filter(i => i.inShop && i.buy > 0);
   function shopTabs() {
     const list = shopItems();
@@ -1279,40 +1283,31 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       const max = data.settings.teamMax, team = teamEntries(), icon = (avatarSpecies() || {}).id;
       const pic = x => { const xs = speciesOf(x.species); const u = xs && PP.Sprite.portrait(xs.folder); return u ? `<img class="pix" src="${u}" alt="">` : I('pokeball'); };
       const hpBar = x => { const r = hpOf(x) / maxHp(x); return `<span class="mini-hp"><i style="width:${r * 100}%;background:${r > .5 ? 'var(--good)' : r > .2 ? 'var(--gold)' : 'var(--bad)'}"></i></span>`; };
-      const main = team[0];
-      const picking = boxSlot != null;
-      const slots = [];
-      for (let k = 1; k < max; k++) {
+      const cards = [];
+      for (let k = 0; k < max; k++) {
         const x = team[k];
-        slots.push(x ? `<div class="t-slot${boxSlot === k ? ' on' : ''}"><button class="t-slot-btn" data-do="slot" data-id="${k}" aria-label="Change backup ${k}">${pic(x)}<b>Lv ${x.level}</b>${hpBar(x)}</button>
-            <button class="t-slot-x" data-do="team-out" data-id="${k}" aria-label="Take ${esc(labelOf(x))} out of the team">${I('close')}</button></div>`
-          : `<div class="t-slot empty${boxSlot === k ? ' on' : ''}"><button class="t-slot-btn" data-do="slot" data-id="${k}" aria-label="Add a backup Pokémon">${I('plus')}<small>Backup</small></button></div>`);
+        cards.push(x ? `<button class="tm-card${k === 0 ? ' main' : ''}" data-do="cell" data-id="${esc(x.uid)}" aria-label="${esc(labelOf(x))}, ${k === 0 ? 'main' : 'team member ' + (k + 1)}">
+            <span class="tm-tag">${k === 0 ? '★ Main' : 'Team ' + (k + 1)}</span><span class="tm-pic">${pic(x)}</span><b>${esc(labelOf(x))}</b><small>Lv ${x.level}</small>${hpBar(x)}</button>`
+          : `<button class="tm-card empty" data-do="team-empty" aria-label="Empty team slot">${I('plus')}<small>Empty</small></button>`);
       }
       const sorted = save.box.slice().sort((a, b) => boxSort === 'level' ? b.level - a.level || a.since - b.since
         : boxSort === 'dex' ? (speciesOf(a.species) || {}).dex - (speciesOf(b.species) || {}).dex || b.level - a.level : b.since - a.since);
       const cells = sorted.map(x => {
         const xs = speciesOf(x.species); if (!xs) return '';
         const ti = save.team.indexOf(x.uid);
-        return `<button class="box-cell${ti >= 0 ? ' in-team' : ''}${picking ? ' picking' : ''}" data-do="cell" data-id="${esc(x.uid)}" title="${esc(labelOf(x))} · Lv ${x.level}">
-          ${pic(x)}<span class="box-lv">Lv ${x.level}</span>${ti >= 0 ? `<span class="box-team">${ti === 0 ? '★' : ti + 1}</span>` : ''}${hpBar(x)}</button>`;
+        return `<button class="box-cell${ti >= 0 ? ' in-team' : ''}" data-do="cell" data-id="${esc(x.uid)}" title="${esc(labelOf(x))} · Lv ${x.level}">
+          <span class="box-pic">${pic(x)}<span class="box-lv">Lv ${x.level}</span>${ti >= 0 ? `<span class="box-team">${ti === 0 ? '★' : ti + 1}</span>` : ''}</span>
+          <span class="box-name">${esc(labelOf(x))}</span>${hpBar(x)}</button>`;
       }).join('');
       const detail = boxDetail && save.box.find(x => x.uid === boxDetail);
       return { title: data.settings.tabPals, body: `
         <div class="sec-label">Your team · ${team.length}/${max}</div>
-        <div class="team-main${boxSlot === 0 ? ' on' : ''}">
-          <button class="team-main-btn" data-do="slot" data-id="0" aria-label="Change your main Pokémon">
-            <span class="team-main-pic">${pic(main)}</span>
-            <span class="team-main-info"><small>Main · leads battles and lives on your home screen</small><b>${esc(labelOf(main))}</b>
-              <span>Lv ${main.level} · HP ${Math.floor(hpOf(main))}/${maxHp(main)}</span>${hpBar(main)}</span>
-          </button>
-          <button class="btn btn-sm" data-do="cell" data-id="${esc(main.uid)}">Details</button>
-        </div>
-        <div class="t-slots">${slots.join('')}</div>
-        ${picking ? `<div class="pick-hint">${I('pokeball')}<span>Tap a Pokémon in your box to put it in ${boxSlot === 0 ? 'the Main slot' : `backup slot ${boxSlot}`}.</span><button class="btn btn-sm" data-do="slot-cancel">Cancel</button></div>` : ''}
+        <p class="team-help">${I('star')}<span>Your <b>Main</b> leads every battle and lives on your home screen. Tap any Pokémon to make it your Main, or add it to or remove it from your team.</span></p>
+        <div class="tm-grid">${cards.join('')}</div>
         <div class="box-head"><div class="sec-label" style="margin:0">PC box · ${save.box.length} Pokémon</div>
           <div class="box-sort">${[['new', 'Newest'], ['level', 'Level'], ['dex', 'No.']].map(([k, l]) => `<button class="cat-tab${boxSort === k ? ' on' : ''}" data-do="box-sort" data-id="${k}">${l}</button>`).join('')}</div></div>
         <div class="box-grid">${cells}</div>
-        <p class="muted" style="margin-top:10px">Tap or press and hold a Pokémon to see its level, stats and moves.</p>
+        <p class="muted" style="margin-top:10px">Tap a Pokémon to see its stats and moves, or to change your team.</p>
         ${detail ? boxDetailHTML(detail, icon) : ''}` };
     },
     starter() {
@@ -1678,18 +1673,18 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         <button class="icon-btn sm bd-close" data-do="cell-close" aria-label="Close">${I('close')}</button>
         <div class="bd-head"><span class="bd-pic">${PP.Sprite.portrait(sp.folder) ? `<img class="pix" src="${PP.Sprite.portrait(sp.folder)}" alt="">` : I('pokeball')}</span>
           <div><b>${esc(labelOf(e))}</b><span>${e.nickname ? esc(sp.name) + ' · ' : ''}#${String(sp.dex).padStart(3, '0')} · Lv ${e.level}</span><div class="bd-types">${types}</div></div></div>
+        <div class="bd-actions top">
+          ${ti === 0 ? '<span class="qty main-tag">★ Your main Pokémon</span>' : `<button class="btn btn-primary" data-do="make-main" data-id="${esc(e.uid)}">${I('star')}Make main</button>`}
+          ${ti > 0 ? `<button class="btn" data-do="team-out" data-id="${ti}">Remove from team</button>`
+            : ti < 0 ? `<button class="btn btn-primary" data-do="team-add" data-id="${esc(e.uid)}" ${save.team.length >= data.settings.teamMax ? 'disabled' : ''}>Add to team</button>` : ''}
+          ${icon === sp.id ? '<span class="qty">Profile icon</span>' : `<button class="btn btn-sm" data-do="avatar" data-id="${esc(sp.id)}">Use as icon</button>`}
+        </div>
         <div class="bd-line"><span>EXP</span><span class="st-bar wide"><i style="width:${expPct}%;background:var(--accent)"></i></span><small>${expPct}%</small></div>
         <div class="bd-line"><span>HP</span><span class="st-bar wide"><i style="width:${hpOf(e) / maxHp(e) * 100}%;background:var(--good)"></i></span><small class="tnum">${Math.floor(hpOf(e))}/${maxHp(e)}</small></div>
         <div class="bd-stats">${stat('Attack', m.atk, top)}${stat('Defense', m.def, top)}${stat('Sp. Atk', m.spa, top)}${stat('Sp. Def', m.spd, top)}${stat('Speed', m.spe, top)}</div>
         <div class="bd-moves">${m.moves.map(mv => `<span class="bd-move" style="--c:${(PP.TYPES || {})[mv.type] || '#888'}"><b>${esc(mv.name)}</b><small>${esc(mv.type)} · ${mv.power || '—'} power</small></span>`).join('')}</div>
         <p class="muted" style="text-align:left;margin:8px 0 12px">${e.caughtAt ? `From ${esc(e.caughtAt)} · ` : ''}with you ${days} day${days === 1 ? '' : 's'}</p>
         <form class="field" data-form="nick" data-uid="${esc(e.uid)}"><input id="nickInput" maxlength="16" placeholder="Nickname (${esc(sp.name)})" value="${esc(e.nickname)}" autocomplete="off"><button class="btn" type="submit">Save</button></form>
-        <div class="bd-actions">
-          ${ti === 0 ? '<span class="qty">Main Pokémon</span>' : `<button class="btn btn-primary btn-sm" data-do="make-main" data-id="${esc(e.uid)}">${I('star')}Make main</button>`}
-          ${ti > 0 ? `<button class="btn btn-sm" data-do="team-out" data-id="${ti}">Back to box</button>`
-            : ti < 0 ? `<button class="btn btn-sm" data-do="team-add" data-id="${esc(e.uid)}" ${save.team.length >= data.settings.teamMax ? 'disabled' : ''}>Add to team</button>` : ''}
-          ${icon === sp.id ? '<span class="qty">Profile icon</span>' : `<button class="btn btn-sm" data-do="avatar" data-id="${esc(sp.id)}">Use as icon</button>`}
-        </div>
         ${ti !== 0 && save.box.length > 1 ? `<button class="bd-release" data-do="release" data-id="${esc(e.uid)}">Release ${esc(labelOf(e))}</button>` : ''}
       </div></div>`;
   }
@@ -1707,24 +1702,31 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       if (st.type === 'wild') { const sp = speciesOf(st.species); return sp ? `${sp.name} Lv ${st.level}${st.mustCatch ? ' · catch it' : ''}` : ''; }
       return (locOf(st.area) || {}).name || '';
     };
-    const rows = steps.map(st => {
+    // a short list: the last finished step, the current one and a few ahead (all of them on request)
+    const ci = cur ? steps.findIndex(x => x.id === cur.id) : steps.length;
+    const shown = storyAll ? steps : steps.filter((x, i) => i >= ci - 1 && i <= ci + 3);
+    const rows = shown.map(st => {
       const isDone = !!save.story.done[st.id], isCur = cur && cur.id === st.id;
-      return `<li class="step${isDone ? ' done' : isCur ? ' cur' : ' later'}">
-        <span class="step-ic">${I(isDone ? 'check' : isCur ? ICON[st.type] || 'flag' : 'lock')}</span>
-        <span class="step-main"><b>${esc(st.title)}</b><small>${esc(detail(st))}</small></span></li>`;
+      const inner = `<span class="step-ic">${I(isDone ? 'check' : isCur ? ICON[st.type] || 'flag' : 'lock')}</span>
+        <span class="step-main"><b>${esc(st.title)}</b><small>${esc(detail(st))}</small></span>${isCur ? `<span class="step-play">${I('chevron')}</span>` : ''}`;
+      return isCur ? `<li class="step cur"><button class="step-btn" data-do="story-go">${inner}</button></li>` : `<li class="step${isDone ? ' done' : ' later'}">${inner}</li>`;
     }).join('');
+    const more = steps.length > shown.length || storyAll ? `<button class="steps-more" data-do="story-all">${storyAll ? 'Show fewer steps' : `Show all ${steps.length} steps`}</button>` : '';
     const label = !cur ? '' : cur.type === 'trainer' ? `Battle ${esc(PP.Story.trainerName(data.trainers.find(x => x.id === cur.trainer) || { trainerClass: '', name: 'trainer' }))}`
       : cur.type === 'wild' ? 'Continue: wild Pokémon ahead' : cur.type === 'arrive' ? `Travel to ${esc((locOf(cur.area) || {}).name || 'the next area')}` : 'Continue the journey';
     const gymInChapter = steps.map(st => data.trainers.find(x => x.id === st.trainer)).find(t => t && t.badge !== 'none');
     const badge = gymInChapter && data.badges.find(b => b.id === gymInChapter.badge);
-    return `<div class="chapter">
+    const next = cur ? `<button class="story-next" data-do="story-go">
+        <span class="sn-ic">${I(ICON[cur.type] || 'flag')}</span>
+        <span class="sn-main"><small>Next in the story</small><b>${esc(cur.title)}</b><span>${esc(detail(cur))}</span></span>
+        <span class="sn-play">Play</span></button>` : '';
+    return `${next}<div class="chapter">
         <div class="chapter-top"><span class="chapter-no">${data.regions.filter(r => r.enabled).length > 1 ? esc((data.regions.find(r => r.id === ch.region) || {}).name || '') + ' · ' : ''}Chapter ${ch.number}</span><span class="tnum">${done}/${steps.length}</span></div>
         <h3>${esc(ch.title)}</h3><p>${esc(ch.description)}</p>
         <div class="bar" style="--c:var(--gold)"><i style="width:${steps.length ? done / steps.length * 100 : 0}%"></i></div>
-        <ol class="steps">${rows}</ol>
+        <ol class="steps">${rows}</ol>${more}
         <div class="chapter-reward">${I('star')}<span>Chapter reward: ${fmt(ch.rewardCoins)} ${esc(coinName())} · ${fmt(ch.rewardGems)} ${esc(gemName())} · ${fmt(ch.rewardExp)} EXP${badge ? ` · ${esc(badge.name)}` : ''}</span></div>
-        ${cur ? `<button class="btn btn-primary story-go" data-do="story-go">${I(ICON[cur.type] || 'flag')}${label}</button>`
-              : '<p class="muted" style="margin:12px 0 0">You’ve reached the end of the story so far. More chapters are coming in a later update.</p>'}
+        ${cur ? '' : '<p class="muted" style="margin:12px 0 0">You’ve reached the end of the story so far. More chapters are coming in a later update.</p>'}
       </div>
       <div class="sec-label">${regionBadges(ch).length && data.regions.filter(r => r.enabled).length > 1 ? esc((data.regions.find(r => r.id === ch.region) || {}).name || '') + ' badges' : 'Badges'} · ${regionBadges(ch).filter(b => save.badges[b.id]).length}/${regionBadges(ch).length}</div>
       <div class="badges">${regionBadges(ch).map(b => `<div class="badge${save.badges[b.id] ? ' got' : ''}" style="--c:${b.color}" title="${esc(b.name)}${save.badges[b.id] ? '' : ' (not earned yet)'}">${I('star')}<span>${esc(b.name.replace(/ Badge$/, ''))}</span></div>`).join('')}</div>`;
@@ -1811,6 +1813,9 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       case 'heal': { const l = locOf(id); healTeam(l ? `at ${l.name}` : ''); bump('heal'); commit(); toast('Your team is fully healed!'); PP.Audio.sfx('heal'); break; }
       case 'region': exploreRegion = id; renderSheet(); break;
       case 'explore-tab': exploreTab = id; renderSheet(); break;
+      case 'story-all': storyAll = !storyAll; renderSheet(); break;
+      case 'quest-toggle': e.stopPropagation(); questOpen = !questOpen; try { localStorage.setItem('pp2.questOpen', questOpen ? '1' : ''); } catch (err) {} sig.quest = null; update(); break;
+      case 'team-empty': toast('Tap a Pokémon in your PC box below, then “Add to team”.'); break;
       case 'quest-tab': questTab = id; renderSheet(); $('sheetBody').scrollTop = 0; break;
       case 'story-open': exploreTab = 'story'; openSheet('explore'); break;
       case 'story-go': runStep(PP.Story.current(data, save)); break;
