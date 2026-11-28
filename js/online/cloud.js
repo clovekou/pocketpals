@@ -103,31 +103,34 @@ window.PP = window.PP || {};
   }).catch(() => gate('error', 'Couldn’t reach the online service. Check your internet connection.'));
   function fail(e) { console.error(e); gate('error', e && e.code === 'unavailable' ? 'You seem to be offline. Check your internet connection.' : 'Couldn’t load your game. Try again.'); }
 
+  const VER_KEY = 'pp2.dataVersion';
   async function start(u) {
     uid = u.uid;
     Cloud.user = { uid, email: (u.email || '').toLowerCase(), name: u.displayName || '' };
-    gate('busy', 'Checking your access…');
-    Cloud.admin = await db.doc('config/access').get().then(() => true, () => false);   // only admins may read it
+    const local = S.rawSave(), localOwner = localStorage.getItem(OWNER_KEY);
+    // every read at once (one round trip instead of one after another)
+    const accessP = db.doc('config/access').get().then(() => true, () => false);   // only admins may read it
+    const gameP = db.doc('config/game').get();
+    const saveP = db.doc('saves/' + uid).get();
+
+    // this phone already has this player's game: open it straight away and catch up in the background
+    if (PAGE === 'game' && local && localOwner === uid && localStorage.getItem(KEYS.data)) {
+      hookWrites(); go();
+      accessP.then(a => { Cloud.admin = a; });
+      catchUp(gameP, saveP, accessP).catch(e => console.warn('Background sync', e));
+      return;
+    }
+
+    gate('busy', 'Loading your game…');
+    Cloud.admin = await accessP;
     let game;
-    try { game = await db.doc('config/game').get(); }
+    try { game = await gameP; }
     catch (e) { if (e.code === 'permission-denied') return gate('denied'); throw e; }
     if (PAGE === 'admin' && !Cloud.admin) return gate('notadmin');
-    gate('busy', 'Loading your game…');
-
-    // who joined and when: a public profile for friends, private details (email) for the admin
-    const ts = firebase.firestore.FieldValue.serverTimestamp();
-    const prof = await db.doc('players/' + uid).get();
-    if (!prof.exists) await db.doc('players/' + uid).set({ joined: ts, name: '', online: true, lastActive: ts }, { merge: true });
-    await db.doc('accounts/' + uid).set(Object.assign({ email: Cloud.user.email, googleName: Cloud.user.name, lastLogin: ts }, prof.exists ? {} : { joined: ts }), { merge: true });
-
-    // game data: the cloud copy wins; the first admin to sign in uploads theirs
-    const gameJson = await readGame(game);
-    if (gameJson) localStorage.setItem(KEYS.data, gameJson);
-    else if (Cloud.admin) await pushData(S.loadData());
+    await applyGame(game, false);
 
     // the save: the newer of this browser's copy (if it's this player's) and the cloud copy
-    const snap = await db.doc('saves/' + uid).get();
-    const local = S.rawSave(), localOwner = localStorage.getItem(OWNER_KEY);
+    const snap = await saveP;
     let upload = false;
     if (snap.exists) {
       const remote = JSON.parse(snap.data().json || 'null') || {};
@@ -141,6 +144,42 @@ window.PP = window.PP || {};
     hookWrites(); listen();
     go();
     if (upload) pushSave(true);
+    profile().catch(() => {});
+  }
+  /** after a quick start: newer game data or a newer save from another device replaces what's on screen */
+  async function catchUp(gameP, saveP, accessP) {
+    Cloud.admin = await accessP;
+    await applyGame(await gameP, true);
+    const snap = await saveP, local = S.rawSave();
+    if (snap.exists) {
+      const remote = JSON.parse(snap.data().json || 'null') || {};
+      if ((Number(remote.lastTick) || 0) > (Number(local && local.lastTick) || 0) + 2000) { localStorage.setItem(KEYS.save, snap.data().json); lastPushed = snap.data().json; S.emit('save'); }
+      else pushSave(true);
+    } else pushSave(true);
+    listen();
+    const before = S.rawSave(); await checkName();
+    if (before && before.named && !S.rawSave().named) S.emit('save');   // their name was taken meanwhile: ask again
+    await profile();
+  }
+  /** public profile for friends, private details (email) for the admin; not needed to start playing */
+  async function profile() {
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    const prof = await db.doc('players/' + uid).get();
+    if (!prof.exists) await db.doc('players/' + uid).set({ joined: ts, name: '', online: true, lastActive: ts }, { merge: true });
+    await db.doc('accounts/' + uid).set(Object.assign({ email: Cloud.user.email, googleName: Cloud.user.name, lastLogin: ts }, prof.exists ? {} : { joined: ts }), { merge: true });
+  }
+  /** game data from the cloud: only downloaded when it changed; an admin upgrades data saved by an older version */
+  async function applyGame(snap, announce) {
+    if (!snap || !snap.exists) { if (Cloud.admin) await pushData(S.loadData()); return; }
+    const info = snap.data(), ver = info.version ? String(info.version) : '';
+    let j = null;
+    if (ver && ver === localStorage.getItem(VER_KEY) && localStorage.getItem(KEYS.data)) j = localStorage.getItem(KEYS.data);
+    else {
+      j = await readGame(snap); if (!j) return;
+      if (j !== localStorage.getItem(KEYS.data)) { localStorage.setItem(KEYS.data, j); if (announce) S.emit('data'); }
+      if (ver) localStorage.setItem(VER_KEY, ver);
+    }
+    if (Cloud.admin && j && j.indexOf('"layout":"' + S.LAYOUT + '"') < 0) await pushData(S.loadData());   // saves loading time for everyone
   }
 
   /** a name taken by someone else (e.g. picked offline) has to be chosen again */
@@ -191,19 +230,21 @@ window.PP = window.PP || {};
   function pushData(d) {
     const json = JSON.stringify(d), n = Math.max(1, Math.ceil(json.length / PART)), batch = db.batch();
     for (let i = 0; i < n; i++) batch.set(db.doc('config/game-p' + i), { json: json.slice(i * PART, (i + 1) * PART) });
-    batch.set(db.doc('config/game'), { parts: n, version: Date.now(), at: firebase.firestore.FieldValue.serverTimestamp(), by: Cloud.user.email });
-    return batch.commit();
+    const version = Date.now();
+    batch.set(db.doc('config/game'), { parts: n, version, at: firebase.firestore.FieldValue.serverTimestamp(), by: Cloud.user.email });
+    return batch.commit().then(() => { localStorage.setItem(VER_KEY, String(version)); });
   }
   /** changes made elsewhere (the admin, another device) reach this tab */
   function listen() {
     db.doc('config/game').onSnapshot(s => {
       if (!s.exists || s.metadata.hasPendingWrites) return;
-      readGame(s).then(j => { if (j && j !== localStorage.getItem(KEYS.data)) { localStorage.setItem(KEYS.data, j); S.emit('data'); } }).catch(() => {});
+      applyGame(s, true).catch(() => {});
     }, () => {});
     db.doc('saves/' + uid).onSnapshot(s => {
       if (!s.exists || s.metadata.hasPendingWrites || s.data().device === DEVICE) return;
-      const j = s.data().json;
-      if (j && j !== localStorage.getItem(KEYS.save)) { localStorage.setItem(KEYS.save, j); lastPushed = j; S.emit('save'); }
+      const j = s.data().json, here = S.rawSave();
+      let theirs = 0; try { theirs = Number(JSON.parse(j).lastTick) || 0; } catch (e) {}
+      if (j && j !== localStorage.getItem(KEYS.save) && theirs > (Number(here && here.lastTick) || 0)) { localStorage.setItem(KEYS.save, j); lastPushed = j; S.emit('save'); }   // never older over newer
     }, () => {});
   }
 

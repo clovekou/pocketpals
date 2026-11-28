@@ -66,6 +66,16 @@
   }
 
   // ---------- validation ----------
+  // While normalizing, each list of choices (types, items, areas…) is built once and reused: rebuilding it for
+  // every field of every row made loading take seconds on phones.
+  let choiceCache = null;
+  function choiceSet(src, d) {
+    if (!choiceCache) return new Set(options(src, d).map(o => o[0]));
+    const key = Array.isArray(src) ? src : src;
+    let set = choiceCache.get(key);
+    if (!set) { set = new Set(options(src, d).map(o => o[0])); choiceCache.set(key, set); }
+    return set;
+  }
   function coerce(f, v, d) {
     const def = f.def;
     switch (f.type) {
@@ -80,14 +90,14 @@
       case 'bool': return v == null ? !!def : !!v;
       case 'color': return /^#[0-9a-f]{6}$/i.test(v) ? String(v).toLowerCase() : (def || '#888888');
       case 'select': {
-        const vals = options(f.optionsFrom || f.options, d).map(o => o[0]);
-        if (vals.includes(v)) return v;
-        if (vals.includes(def)) return def;
-        return vals.length ? vals[0] : '';
+        const vals = choiceSet(f.optionsFrom || f.options, d);
+        if (vals.has(v)) return v;
+        if (vals.has(def)) return def;
+        return vals.size ? vals.values().next().value : '';
       }
       case 'id': return slug(v);
       case 'multi': {
-        const vals = new Set(options(f.optionsFrom || f.options, d).map(o => o[0]));
+        const vals = choiceSet(f.optionsFrom || f.options, d);
         const arr = Array.isArray(v) ? v : typeof v === 'string' && v ? v.split(',') : (def || []);
         return [...new Set(arr.map(x => String(x).trim()))].filter(x => vals.has(x));
       }
@@ -104,10 +114,20 @@
   }
   function defaultRow(c) { return Object.fromEntries(c.fields.filter(f => f.type !== 'id').map(f => [f.key, f.def])); }
 
-  function normalizeData(raw) {
+  // A fingerprint of the data layout (every setting and field). Data saved by this same version of the game
+  // (same content version and fingerprint) is already clean, so loading can skip re-checking every field.
+  const LAYOUT = (() => { let h = 2166136261; const str = SC.contentVersion + '|' + SC.settings.map(g => g.fields.map(f => f.key + f.type).join(',')).join(';') + '|' +
+    Object.entries(SC.collections).map(([k, c]) => k + ':' + c.fields.map(f => f.key + f.type).join(',')).join(';');
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return 'L' + (h >>> 0).toString(36); })();
+  function normalizeData(raw, trusted) {
+    if (trusted && raw && typeof raw === 'object' && raw.layout === LAYOUT && raw.contentVersion === SC.contentVersion && raw.settings) return raw;
+    choiceCache = new Map();
+    try { return normalizeDataFull(raw); } finally { choiceCache = null; }
+  }
+  function normalizeDataFull(raw) {
     const def = defaults();
     raw = raw && typeof raw === 'object' ? raw : {};
-    const d = { settings: {}, contentVersion: SC.contentVersion };
+    const d = { settings: {}, contentVersion: SC.contentVersion, layout: LAYOUT };
     const migrate = (Number(raw.contentVersion) || 1) < SC.contentVersion;
     const pairs = {};
     Object.entries(SC.collections).forEach(([k, c]) => {
@@ -129,6 +149,7 @@
       const seen = new Set();
       pairs[k] = rows.map(r => [normalizeRow(c, r, d), r || {}]).filter(([r]) => r.id && !seen.has(r.id) && seen.add(r.id));
       d[k] = pairs[k].map(([r]) => r);
+      choiceCache = new Map();
     });
     // second pass: re-check references now that every collection exists
     Object.entries(SC.collections).forEach(([k, c]) => {
@@ -277,8 +298,8 @@
   PP.esc = esc;
   PP.slug = slug;
   PP.store = {
-    KEYS, clone, options, expForLevel, levelForExp, coerce, defaults, defaultRow, normalizeData, normalizeSave, newSave, expNeed,
-    loadData() { const d = normalizeData(read(KEYS.data)); logLimit = d.settings.logLimit; return d; },
+    KEYS, LAYOUT, clone, options, expForLevel, levelForExp, coerce, defaults, defaultRow, normalizeData, normalizeSave, newSave, expNeed,
+    loadData() { const d = normalizeData(read(KEYS.data), true); logLimit = d.settings.logLimit; return d; },
     writeData(d) { const n = normalizeData(d); logLimit = n.settings.logLimit; write(KEYS.data, n); return n; },
     loadSave(d) { return normalizeSave(read(KEYS.save), d); },
     rawSave() { return read(KEYS.save); },
