@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 28,
+  contentVersion: 29,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -53,7 +53,8 @@ PP.SCHEMA = {
     { v: 3, set: { homeBackground: 'green-meadow', tabPals: 'Pokemon', tabParty: 'Friends' } },
     { v: 5, set: { expGrowth: 1.06 } },
     { v: 13, set: { professorName: 'Professor Kou' } },
-    { v: 24, set: { showLocation: false } },                     // the area card is off the home screen
+    { v: 24, set: { showLocation: false } },
+    { v: 29, set: { petScale: 3.5, buddyScale: 55 } },             // main a bit bigger, the back row a bit smaller                     // the area card is off the home screen
     { v: 22, set: { professorImage: 'assets/characters/professor-kou-face.png', professorFullImage: 'assets/characters/professor-kou.png' } },
     { v: 17, set: { cryFolder: 'https://veekun.com/dex/media/pokemon/cries/' } },      // cries rebuilt: sprite folder number → veekun .ogg
   ],
@@ -117,10 +118,11 @@ PP.SCHEMA = {
       { key: 'starterText', label: 'Starter screen text', type: 'textarea', def: 'Pick the Pokémon that will live with you. Look after it every day!', max: 160 },
       { key: 'starterLevel', label: 'Starter level', type: 'int', min: 1, max: 100, def: 5, help: 'The level the starter Pokémon begins at.' },
       { key: 'partnerExpShare', label: 'Care EXP the partner also gets', type: 'int', min: 0, max: 500, def: 100, suffix: '%', help: 'Care actions, items and explores give trainer EXP; the partner Pokémon gets this share as its own EXP.' },
-      { key: 'petScale', label: 'Pokémon size on screen', type: 'number', min: 1, max: 8, step: 0.5, def: 3, suffix: '× pixels', help: 'Each sprite pixel is drawn this many screen pixels wide. Each Pokémon can also have its own size.' },
+      { key: 'petScale', label: 'Pokémon size on screen', type: 'number', min: 1, max: 8, step: 0.5, def: 3.5, suffix: '× pixels', help: 'Each sprite pixel is drawn this many screen pixels wide. Each Pokémon can also have its own size.' },
       { key: 'petGround', label: 'Where it stands', type: 'int', min: 30, max: 95, def: 66, suffix: '% down', help: 'Height of its feet in the play area.' },
+      { key: 'mainMarker', label: 'Marker above your main Pokémon', type: 'bool', def: true, help: 'A small gold triangle so players know which one is their main.' },
       { key: 'buddiesOn', label: 'Show the rest of the team on the home screen', type: 'bool', def: true, help: 'Your other team Pokémon play further back: they walk, nap and chat with each other.' },
-      { key: 'buddyScale', label: 'Team size on screen', type: 'int', min: 30, max: 100, def: 72, suffix: '% of the main', help: 'Smaller looks further away.' },
+      { key: 'buddyScale', label: 'Team size on screen', type: 'int', min: 30, max: 100, def: 55, suffix: '% of the main', help: 'Smaller looks further away.' },
       { key: 'buddyTop', label: 'Team area: top', type: 'int', min: 20, max: 90, def: 40, suffix: '% down' },
       { key: 'buddyBottom', label: 'Team area: bottom', type: 'int', min: 20, max: 95, def: 53, suffix: '% down' },
       { key: 'petWander', label: 'Walks around by itself', type: 'bool', def: true },

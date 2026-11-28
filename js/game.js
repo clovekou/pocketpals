@@ -634,6 +634,12 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     let name = P.walking ? 'Walk' : 'Idle', at = t, dir = P.walking ? P.dir : facing, once = false;
     if (P.act) { name = P.act.name; at = t - P.act.t0; dir = facing; once = !P.act.loop; }
     const done = PP.Sprite.draw(petCtx, sp.folder, { x, y, scale, t: at, anim: name, dir, once });
+    if (s.mainMarker && !talking && $('react').hidden) {                // a gold triangle bobbing above the main Pokémon
+      const top = y - box.h * scale - 14 + Math.sin(t * 3) * 3;
+      petCtx.beginPath(); petCtx.moveTo(x - 12, top - 16); petCtx.lineTo(x + 12, top - 16); petCtx.lineTo(x, top); petCtx.closePath();
+      petCtx.fillStyle = '#ffcf3f'; petCtx.strokeStyle = 'rgba(60,40,0,.55)'; petCtx.lineWidth = 2; petCtx.lineJoin = 'round';
+      petCtx.shadowColor = 'rgba(0,0,0,.25)'; petCtx.shadowBlur = 4; petCtx.fill(); petCtx.shadowBlur = 0; petCtx.stroke();
+    }
     if (P.act && (P.act.loop ? at > P.act.dur : done)) P.act = null;
     placeReact(t, x, y, box.h * scale, W);
   }
