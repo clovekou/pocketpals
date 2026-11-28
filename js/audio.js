@@ -335,12 +335,19 @@ window.PP = window.PP || {};
     });
   }
   function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
-  /** play the cry for a sprite folder; resolves when it has finished. slow = the fainting version (slower, deeper) */
-  async function cry(folder, slow) {
+  // iPhones and some browsers can't play .ogg: they get the same cry as .mp3 from the backup source, by name
+  const canOgg = (() => { try { return !!new Audio().canPlayType('audio/ogg; codecs="vorbis"'); } catch (e) { return false; } })();
+  const MP3_SOURCE = 'https://play.pokemonshowdown.com/audio/cries/';
+  const mp3Url = id => id ? MP3_SOURCE + String(id).toLowerCase().replace(/[^a-z0-9]/g, '') + '.mp3' : null;
+  /** play the cry for a Pokémon (sprite folder + species id); resolves when it has finished. slow = the fainting version */
+  async function cry(folder, slow, id) {
     if (!cfg.cries || !sfxAllowed() || !ensure()) return;
-    const url = cryUrl(folder);
-    if (!url || missing.has(url)) return;
-    await playFile(url, slow ? Math.max(.5, cfg.crySlow / 100) : 1);
+    const rate = slow ? Math.max(.5, cfg.crySlow / 100) : 1;
+    const first = canOgg ? cryUrl(folder) : null, second = mp3Url(id);
+    for (const url of [first, second]) {
+      if (!url || missing.has(url)) continue;
+      if (await playFile(url, rate)) return;
+    }
   }
 
   // ---------------- attack sounds, one flavour per type (played as the attacker lunges) ----------------

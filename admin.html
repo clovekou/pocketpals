@@ -6,9 +6,17 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-32.png">
   <link rel="icon" type="image/svg+xml" href="assets/icons/icon.svg">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+  <link rel="dns-prefetch" href="https://veekun.com">
+  <link rel="dns-prefetch" href="https://play.pokemonshowdown.com">
+  <script>
+    // keep pictures and game files on the device so the game opens quickly next time (see sw.js)
+    if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  </script>
   <title>Pocket Pals Admin</title>
-  <link rel="stylesheet" href="css/base.css?v=43">
-  <link rel="stylesheet" href="css/admin.css?v=43">
+  <link rel="stylesheet" href="css/base.css?v=45">
+  <link rel="stylesheet" href="css/admin.css?v=45">
 </head>
 <body data-page="admin">
   <div class="admin">
@@ -27,22 +35,22 @@
   </div>
   <div class="toasts" id="toasts" aria-live="polite"></div>
 
-  <script src="js/icons.js?v=43"></script>
-  <script src="js/update.js?v=43"></script>
-  <script src="js/catalog-items.js?v=43"></script>
-  <script src="js/catalog-pokemon.js?v=43"></script>
-  <script src="js/content-lumera.js?v=43"></script>
-  <script src="js/schema.js?v=43"></script>
-  <script src="js/store.js?v=43"></script>
-  <script src="js/sprite.js?v=43"></script>
-  <script src="js/online/firebase-config.js?v=43"></script>
-  <script src="js/online/cloud.js?v=43"></script>
-  <script src="js/engine/progression.js?v=43"></script>
-  <script src="js/engine/encounters.js?v=43"></script>
-  <script src="js/engine/validate.js?v=43"></script>
-  <script src="js/audio.js?v=43"></script>
-  <script src="js/battle.js?v=43"></script>
-  <script src="js/engine/story.js?v=43"></script>
-  <script src="js/admin.js?v=43"></script>
+  <script src="js/icons.js?v=45"></script>
+  <script src="js/update.js?v=45"></script>
+  <script src="js/catalog-items.js?v=45"></script>
+  <script src="js/catalog-pokemon.js?v=45"></script>
+  <script src="js/content-lumera.js?v=45"></script>
+  <script src="js/schema.js?v=45"></script>
+  <script src="js/store.js?v=45"></script>
+  <script src="js/sprite.js?v=45"></script>
+  <script src="js/online/firebase-config.js?v=45"></script>
+  <script src="js/online/cloud.js?v=45"></script>
+  <script src="js/engine/progression.js?v=45"></script>
+  <script src="js/engine/encounters.js?v=45"></script>
+  <script src="js/engine/validate.js?v=45"></script>
+  <script src="js/audio.js?v=45"></script>
+  <script src="js/battle.js?v=45"></script>
+  <script src="js/engine/story.js?v=45"></script>
+  <script src="js/admin.js?v=45"></script>
 </body>
 </html>

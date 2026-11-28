@@ -540,7 +540,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     save.partner = uid; save.team = [uid].concat(save.team.filter(u => u !== uid)).slice(0, data.settings.teamMax);   // the partner is the main Pokémon P.x = P.tx = 0.5; P.act = null;
     PP.Sprite.preload(speciesOf(e.species).folder);
     S.log('pokemon', `${labelOf(e)} is now the partner on the home screen`);
-    commit(); toast(`${labelOf(e)} is your partner now`); { const ps = speciesOf(e.species); if (ps) PP.Audio.cry(ps.folder); }
+    commit(); toast(`${labelOf(e)} is your partner now`); { const ps = speciesOf(e.species); if (ps) PP.Audio.cry(ps.folder, false, ps.id); }
     setTimeout(() => playAnim('Hop'), 200);
   }
   /** add to / take out of the battle team (at least one Pokémon always stays in) */
@@ -1169,6 +1169,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       return { title: s.tabExplore, body: tabs + res
         + (regions.length > 1 ? `<div class="cat-tabs">${regions.map(g => `<button class="cat-tab${g.id === exploreRegion ? ' on' : ''}" data-do="region" data-id="${esc(g.id)}">${esc(g.name)}</button>`).join('')}</div>` : '')
         + `<div class="sec-label">${esc((regions.find(g => g.id === exploreRegion) || {}).name || '')}${nd ? ` · ${esc(nd.label)} ${Math.round(save.needs[nd.id])}/100` : ''}</div>`
+        + (((regions.find(g => g.id === exploreRegion) || {}).map) ? `<a class="region-map" href="${esc(encodeURI(regions.find(g => g.id === exploreRegion).map))}" target="_blank" rel="noopener"><img src="${esc(encodeURI(regions.find(g => g.id === exploreRegion).map))}" alt="Map of ${esc(regions.find(g => g.id === exploreRegion).name)}" loading="lazy"><span>${I('compass')}Region map</span></a>` : '')
         + (cards || empty('compass', 'No areas yet', 'New areas are coming soon.')) };
     },
     quests() {
@@ -1451,7 +1452,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     takeOut(e.uid); const got = putIn(t.offer, `Traded from ${t.fromName}`);
     save.tradesDone[id] = 'received';
     S.log('pokemon', `Traded ${labelOf(e)} to ${t.fromName} for ${got ? labelOf(got) : t.offer.species}`);
-    commit(); PP.Audio.sfx('catch'); if (got) setTimeout(() => { const gs = speciesOf(got.species); if (gs) PP.Audio.cry(gs.folder); }, 700);
+    commit(); PP.Audio.sfx('catch'); if (got) setTimeout(() => { const gs = speciesOf(got.species); if (gs) PP.Audio.cry(gs.folder, false, gs.id); }, 700);
     toast(`Trade complete! ${got ? labelOf(got) : 'Your new Pokémon'} joined you.`);
   }
   async function cancelTrade(id) {
@@ -1559,8 +1560,20 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     save.team = team.filter(Boolean);
     const wasMain = save.partner; save.partner = save.team[0];
     S.log('pokemon', k === 0 ? `${labelOf(e)} is now the main Pokémon` : `${labelOf(e)} is in backup slot ${Math.min(k, save.team.length - 1)}`);
-    if (save.partner !== wasMain) { P.x = P.tx = 0.5; P.act = null; const ms = speciesOf(e.species); if (ms) { PP.Sprite.preload(ms.folder); PP.Audio.cry(ms.folder); } }
+    if (save.partner !== wasMain) { P.x = P.tx = 0.5; P.act = null; const ms = speciesOf(e.species); if (ms) { PP.Sprite.preload(ms.folder); PP.Audio.cry(ms.folder, false, ms.id); } }
     boxSlot = null; commit();
+  }
+  /** say goodbye to a Pokémon for good (not the main one, and never the last one) */
+  function release(uid) {
+    const e = save.box.find(x => x.uid === uid); if (!e) return;
+    if (uid === save.team[0]) return toast('Your main Pokémon can’t be released. Choose another main first.');
+    if (save.box.length <= 1) return toast('You can’t release your last Pokémon.');
+    if (!confirm(`Release ${labelOf(e)} (Lv ${e.level})? It will return to the wild and can’t be brought back.`)) return;
+    save.box = save.box.filter(x => x.uid !== uid);
+    save.team = save.team.filter(x => x !== uid);
+    if (save.avatar === e.species && !save.box.some(x => x.species === e.species)) save.avatar = '';
+    S.log('pokemon', `Released ${labelOf(e)} (Lv ${e.level}) back into the wild`);
+    boxDetail = null; commit(); toast(`${labelOf(e)} was released. Bye bye!`);
   }
   function teamOut(k) {
     if (k === 0) return toast('Your main Pokémon can’t be removed. Choose another main first.');
@@ -1593,9 +1606,12 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
             : ti < 0 ? `<button class="btn btn-sm" data-do="team-add" data-id="${esc(e.uid)}" ${save.team.length >= data.settings.teamMax ? 'disabled' : ''}>Add to team</button>` : ''}
           ${icon === sp.id ? '<span class="qty">Profile icon</span>' : `<button class="btn btn-sm" data-do="avatar" data-id="${esc(sp.id)}">Use as icon</button>`}
         </div>
+        ${ti !== 0 && save.box.length > 1 ? `<button class="bd-release" data-do="release" data-id="${esc(e.uid)}">Release ${esc(labelOf(e))}</button>` : ''}
       </div></div>`;
   }
 
+  /** the badges of a chapter's region (each region has its own badge case) */
+  const regionBadges = ch => data.badges.filter(b => (b.region || 'lumera') === ((ch && ch.region) || 'lumera'));
   /** Explore → Story: the current chapter's checklist, what's next, and the badge case */
   function storyHTML() {
     const ch = PP.Story.currentChapter(data, save), cur = PP.Story.current(data, save);
@@ -1618,7 +1634,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const gymInChapter = steps.map(st => data.trainers.find(x => x.id === st.trainer)).find(t => t && t.badge !== 'none');
     const badge = gymInChapter && data.badges.find(b => b.id === gymInChapter.badge);
     return `<div class="chapter">
-        <div class="chapter-top"><span class="chapter-no">Chapter ${ch.number}</span><span class="tnum">${done}/${steps.length}</span></div>
+        <div class="chapter-top"><span class="chapter-no">${data.regions.filter(r => r.enabled).length > 1 ? esc((data.regions.find(r => r.id === ch.region) || {}).name || '') + ' · ' : ''}Chapter ${ch.number}</span><span class="tnum">${done}/${steps.length}</span></div>
         <h3>${esc(ch.title)}</h3><p>${esc(ch.description)}</p>
         <div class="bar" style="--c:var(--gold)"><i style="width:${steps.length ? done / steps.length * 100 : 0}%"></i></div>
         <ol class="steps">${rows}</ol>
@@ -1626,8 +1642,8 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         ${cur ? `<button class="btn btn-primary story-go" data-do="story-go">${I(ICON[cur.type] || 'flag')}${label}</button>`
               : '<p class="muted" style="margin:12px 0 0">You’ve reached the end of the story so far. More chapters are coming in a later update.</p>'}
       </div>
-      <div class="sec-label">Badges · ${Object.keys(save.badges).length}/${data.badges.length}</div>
-      <div class="badges">${data.badges.map(b => `<div class="badge${save.badges[b.id] ? ' got' : ''}" style="--c:${b.color}" title="${esc(b.name)}${save.badges[b.id] ? '' : ' (not earned yet)'}">${I('star')}<span>${esc(b.name.replace(/ Badge$/, ''))}</span></div>`).join('')}</div>`;
+      <div class="sec-label">${regionBadges(ch).length && data.regions.filter(r => r.enabled).length > 1 ? esc((data.regions.find(r => r.id === ch.region) || {}).name || '') + ' badges' : 'Badges'} · ${regionBadges(ch).filter(b => save.badges[b.id]).length}/${regionBadges(ch).length}</div>
+      <div class="badges">${regionBadges(ch).map(b => `<div class="badge${save.badges[b.id] ? ' got' : ''}" style="--c:${b.color}" title="${esc(b.name)}${save.badges[b.id] ? '' : ' (not earned yet)'}">${I('star')}<span>${esc(b.name.replace(/ Badge$/, ''))}</span></div>`).join('')}</div>`;
   }
   /** the Pokédex: every species, seen or caught */
   function dexHTML() {
@@ -1705,7 +1721,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const id = b.dataset.id;
     switch (b.dataset.do) {
       case 'care': setCare(!careOpen); update(); break;
-      case 'pick-starter': { starterPick = id; renderSheet(); const sp = speciesOf(id); if (sp) PP.Audio.cry(sp.folder); break; }
+      case 'pick-starter': { starterPick = id; renderSheet(); const sp = speciesOf(id); if (sp) PP.Audio.cry(sp.folder, false, sp.id); break; }
       case 'partner': setPartner(id); break;
       case 'team': toggleTeam(id); break;
       case 'heal': { const l = locOf(id); healTeam(l ? `at ${l.name}` : ''); bump('heal'); commit(); toast('Your team is fully healed!'); PP.Audio.sfx('heal'); break; }
@@ -1735,6 +1751,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       case 'make-main': placeInSlot(id, 0); boxDetail = id; renderSheet(); break;
       case 'team-add': placeInSlot(id, save.team.length); boxDetail = id; renderSheet(); break;
       case 'team-out': teamOut(+id); renderSheet(); break;
+      case 'release': release(id); break;
       case 'walk-leave': if (walk && !walk.done && confirm('Head back now? You won’t get this trip’s rewards.')) { S.log('explore', `Left ${walk.l.name} early`); endWalk(true); } break;
       case 'walk-close': endWalk(true); break;
       case 'friend': friendView = id || null; tradePicking = false; if (!friendView) closeChat(); renderSheet(); $('sheetBody').scrollTop = 0; break;

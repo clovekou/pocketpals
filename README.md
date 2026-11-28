@@ -102,6 +102,13 @@ recently (with their Google email, visible only to admins) and who is online.
 - **Daily** quests start over every day. **Game settings → Time & needs** sets the reset hour and how many daily quests
   are picked each day (0 = all). **Admin → Player** shows each quest's progress and has a **New day** button.
 
+## Regions
+- **Lumera** (18 chapters) is the first region. **Asteria** (15 chapters, from the blueprint in
+  `Pokemon_RPG_Complete_Blueprint_and_Maps/`) follows after Lumera's story: Professor Rowanley, the World Nexus, Team Eclipse
+  under Lucien, 8 Asteria Gyms/trials, the Asteria League. Blueprint levels are raised to post-Champion strength.
+- Each region has its own badge case and an optional map picture (Content → Regions → *Region map picture*).
+- All 983 Pokémon that have sprites are in the game (`python3 tools/build_pokemon.py`).
+
 ## Walking explore
 Exploring an area (Explore → Wild battles) sends your partner walking left to right across the area's wide path
 picture. Along the way a few places (Game settings → Exploring: *Places a wild Pokémon can appear*) each roll the

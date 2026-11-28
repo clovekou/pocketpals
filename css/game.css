@@ -642,3 +642,10 @@ body { background: #0e1630; -webkit-tap-highlight-color: transparent; overscroll
 .bd-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; align-items: center; }
 .bd-actions .btn .ic { width: 14px; height: 14px; }
 @media (prefers-reduced-motion: reduce) { .box-cell.picking { animation: none; } }
+.bd-release { display: block; width: 100%; margin-top: 14px; padding: 10px; border-radius: 12px; color: var(--bad, #e5484d); font-weight: 650; font-size: 13px;
+  background: color-mix(in srgb, var(--bad, #e5484d) 10%, transparent); }
+.region-map { position: relative; display: block; margin: 0 0 12px; border-radius: 14px; overflow: hidden; background: #fff; border: 1px solid var(--border); }
+.region-map img { display: block; width: 100%; height: auto; }
+.region-map span { position: absolute; left: 8px; bottom: 8px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px;
+  background: rgba(15, 20, 32, .75); color: #fff; font-size: 11.5px; font-weight: 700; }
+.region-map .ic { width: 13px; height: 13px; }

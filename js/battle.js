@@ -43,7 +43,7 @@
   const STRUGGLE = { id: 'struggle', name: 'Struggle', type: 'normal', category: 'physical', power: 50, accuracy: 100, pp: 1, left: Infinity, priority: 0, drain: 0 };
   // sound must never be able to stop a battle: any sound error is ignored
   const sfx = n => { try { if (PP.Audio) PP.Audio.sfx(n); } catch (e) {} };
-  const cry = (m, slow) => { try { return PP.Audio && m ? Promise.resolve(PP.Audio.cry(m.folder, slow)).catch(() => {}) : Promise.resolve(); } catch (e) { return Promise.resolve(); } };   // by sprite folder number
+  const cry = (m, slow) => { try { return PP.Audio && m ? Promise.resolve(PP.Audio.cry(m.folder, slow, m.id)).catch(() => {}) : Promise.resolve(); } catch (e) { return Promise.resolve(); } };   // by sprite folder number
   const TACKLE = { id: 'tackle', name: 'Tackle', type: 'normal', category: 'physical', power: 40, accuracy: 100, pp: 35, priority: 0, drain: 0 };
 
   /** the moves a species knows at a level: the last 4 it has reached in its learnset */

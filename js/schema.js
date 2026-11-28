@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 19,
+  contentVersion: 21,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -425,10 +425,11 @@ PP.SCHEMA = {
         { key: 'name', label: 'Name', type: 'text', def: 'New region', max: 24 },
         { key: 'enabled', label: 'Open', type: 'bool', def: true },
         { key: 'description', label: 'Description', type: 'textarea', def: '', max: 200 },
+        { key: 'map', label: 'Region map picture', type: 'image', def: '', max: 300, help: 'Shown in Explore → Wild battles for this region.' },
       ],
       rows: [
-        { id: 'lumera', name: 'Lumera', enabled: true, description: 'A green region of villages, forests and old caverns, where your adventure begins.' },
-      ],
+        { id: 'lumera', name: 'Lumera', enabled: true, description: 'A green region of villages, forests and old caverns, where your adventure begins.', map: '' },
+      ].concat((PP.LUMERA || {}).regions || []),
     },
 
     locations: {
@@ -542,6 +543,7 @@ PP.SCHEMA = {
         { key: 'name', label: 'Name', type: 'text', def: 'New badge', max: 24 },
         { key: 'color', label: 'Colour', type: 'color', def: '#e9a100' },
         { key: 'description', label: 'Description', type: 'text', def: '', max: 100 },
+        { key: 'region', label: 'Region', type: 'select', optionsFrom: 'regions', def: 'lumera' },
       ],
       rows: (PP.LUMERA || {}).badges || [],
     },

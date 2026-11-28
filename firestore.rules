@@ -15,6 +15,11 @@ service cloud.firestore {
 
     // game data (settings + content): every player reads it, only admins change it
     match /config/game { allow read: if player(); allow write: if admin(); }
+    // the pieces of the game data (config/game-p0, -p1, …)
+    match /config/{part} {
+      allow read: if player() && part.matches('game-p[0-9]+');
+      allow write: if admin() && part.matches('game-p[0-9]+');
+    }
     // the email allowlist
     match /config/access { allow read, write: if admin(); }
     // a player's full save: only them (admins can read it for support)

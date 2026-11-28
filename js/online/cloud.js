@@ -3,7 +3,8 @@
 // localStorage stays the working copy, so the game and admin code don't change: after sign-in this
 // file loads the player's save and the game data from Firestore into localStorage, then copies every
 // later write back up. Firestore layout (see firestore.rules):
-//   config/game     { json }                 game data (settings + content); only admins write it
+//   config/game     { parts }                game data (settings + content), split into config/game-p0…pN (each { json });
+//                                            only admins write it (older data may still be a single { json })
 //   config/access   { players[], admins[] }  the email allowlist; only admins read or write it
 //   saves/{uid}     { json, device, at }     a player's full save; only that player (and admins)
 //   players/{uid}   { name, level, … }       public profile that friends can see
@@ -120,7 +121,8 @@ window.PP = window.PP || {};
     await db.doc('accounts/' + uid).set(Object.assign({ email: Cloud.user.email, googleName: Cloud.user.name, lastLogin: ts }, prof.exists ? {} : { joined: ts }), { merge: true });
 
     // game data: the cloud copy wins; the first admin to sign in uploads theirs
-    if (game.exists) localStorage.setItem(KEYS.data, game.data().json);
+    const gameJson = await readGame(game);
+    if (gameJson) localStorage.setItem(KEYS.data, gameJson);
     else if (Cloud.admin) await pushData(S.loadData());
 
     // the save: the newer of this browser's copy (if it's this player's) and the cloud copy
@@ -175,15 +177,28 @@ window.PP = window.PP || {};
     return batch.commit().catch(e => { lastPushed = ''; console.warn('Save not uploaded', e); });
   }
   Cloud.flush = () => pushSave(true);
+  // The game data is bigger than one database entry may be (1 MB), so it is stored in pieces.
+  const PART = 300000;                                  // characters per piece (≤ 900 KB even with accents)
+  async function readGame(snap) {
+    if (!snap || !snap.exists) return null;
+    const d = snap.data();
+    if (d.json) return d.json;                          // older single-piece data
+    if (!d.parts) return null;
+    const parts = await Promise.all(Array.from({ length: d.parts }, (_, i) => db.doc('config/game-p' + i).get()));
+    if (parts.some(x => !x.exists)) return null;
+    return parts.map(x => x.data().json || '').join('');
+  }
   function pushData(d) {
-    return db.doc('config/game').set({ json: JSON.stringify(d), at: firebase.firestore.FieldValue.serverTimestamp(), by: Cloud.user.email });
+    const json = JSON.stringify(d), n = Math.max(1, Math.ceil(json.length / PART)), batch = db.batch();
+    for (let i = 0; i < n; i++) batch.set(db.doc('config/game-p' + i), { json: json.slice(i * PART, (i + 1) * PART) });
+    batch.set(db.doc('config/game'), { parts: n, version: Date.now(), at: firebase.firestore.FieldValue.serverTimestamp(), by: Cloud.user.email });
+    return batch.commit();
   }
   /** changes made elsewhere (the admin, another device) reach this tab */
   function listen() {
     db.doc('config/game').onSnapshot(s => {
-      if (!s.exists) return;
-      const j = s.data().json;
-      if (j && j !== localStorage.getItem(KEYS.data)) { localStorage.setItem(KEYS.data, j); S.emit('data'); }
+      if (!s.exists || s.metadata.hasPendingWrites) return;
+      readGame(s).then(j => { if (j && j !== localStorage.getItem(KEYS.data)) { localStorage.setItem(KEYS.data, j); S.emit('data'); } }).catch(() => {});
     }, () => {});
     db.doc('saves/' + uid).onSnapshot(s => {
       if (!s.exists || s.metadata.hasPendingWrites || s.data().device === DEVICE) return;
