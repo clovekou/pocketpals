@@ -41,9 +41,9 @@
     if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   </script>
   <title>Pocket Pals</title>
-  <link rel="stylesheet" href="css/base.css?v=45">
-  <link rel="stylesheet" href="css/game.css?v=45">
-  <link rel="stylesheet" href="css/battle.css?v=45">
+  <link rel="stylesheet" href="css/base.css?v=46">
+  <link rel="stylesheet" href="css/game.css?v=46">
+  <link rel="stylesheet" href="css/battle.css?v=46">
 </head>
 <body>
   <div class="app" id="app">
@@ -100,6 +100,7 @@
     <div class="story" id="story" hidden>
       <div class="story-dim"></div>
       <div class="spot" id="spot" hidden></div>
+      <img class="story-figure" id="storyFigure" alt="" hidden>
       <div class="dialog" role="dialog" aria-live="polite" aria-labelledby="dlgWho">
         <div class="dlg-face" id="dlgFace"></div>
         <div class="dlg-body">
@@ -115,22 +116,22 @@
     </div>
   </div>
 
-  <script src="js/icons.js?v=45"></script>
-  <script src="js/update.js?v=45"></script>
-  <script src="js/catalog-items.js?v=45"></script>
-  <script src="js/catalog-pokemon.js?v=45"></script>
-  <script src="js/content-lumera.js?v=45"></script>
-  <script src="js/schema.js?v=45"></script>
-  <script src="js/store.js?v=45"></script>
-  <script src="js/sprite.js?v=45"></script>
-  <script src="js/online/firebase-config.js?v=45"></script>
-  <script src="js/online/cloud.js?v=45"></script>
-  <script src="js/online/social.js?v=45"></script>
-  <script src="js/engine/progression.js?v=45"></script>
-  <script src="js/engine/encounters.js?v=45"></script>
-  <script src="js/audio.js?v=45"></script>
-  <script src="js/battle.js?v=45"></script>
-  <script src="js/engine/story.js?v=45"></script>
-  <script src="js/game.js?v=45"></script>
+  <script src="js/icons.js?v=46"></script>
+  <script src="js/update.js?v=46"></script>
+  <script src="js/catalog-items.js?v=46"></script>
+  <script src="js/catalog-pokemon.js?v=46"></script>
+  <script src="js/content-lumera.js?v=46"></script>
+  <script src="js/schema.js?v=46"></script>
+  <script src="js/store.js?v=46"></script>
+  <script src="js/sprite.js?v=46"></script>
+  <script src="js/online/firebase-config.js?v=46"></script>
+  <script src="js/online/cloud.js?v=46"></script>
+  <script src="js/online/social.js?v=46"></script>
+  <script src="js/engine/progression.js?v=46"></script>
+  <script src="js/engine/encounters.js?v=46"></script>
+  <script src="js/audio.js?v=46"></script>
+  <script src="js/battle.js?v=46"></script>
+  <script src="js/engine/story.js?v=46"></script>
+  <script src="js/game.js?v=46"></script>
 </body>
 </html>

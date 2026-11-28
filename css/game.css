@@ -649,3 +649,19 @@ body { background: #0e1630; -webkit-tap-highlight-color: transparent; overscroll
 .region-map span { position: absolute; left: 8px; bottom: 8px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px;
   background: rgba(15, 20, 32, .75); color: #fff; font-size: 11.5px; font-weight: 700; }
 .region-map .ic { width: 13px; height: 13px; }
+
+/* the Professor standing above the text box */
+.story-figure { position: absolute; left: 50%; bottom: calc(150px + var(--sab, 0px)); height: min(54%, 470px); width: auto; transform: translateX(-50%);
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, .35)); pointer-events: none; z-index: 0; }
+.story-figure[hidden] { display: none; }
+.story-figure.in { animation: fig-in .45s cubic-bezier(.2, .9, .3, 1.1) both; }
+@keyframes fig-in { from { opacity: 0; transform: translate(-50%, 30px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.story .dialog { z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .story-figure.in { animation: none; } }
+.reset-row { width: 100%; text-align: left; }
+.reset-box { padding: 14px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--bad, #e5484d) 45%, transparent); background: color-mix(in srgb, var(--bad, #e5484d) 8%, var(--surface)); }
+.reset-box p { margin: 0 0 10px; font-size: 13px; line-height: 1.5; }
+.reset-box label { display: block; font-size: 12px; font-weight: 650; color: var(--text-2); margin-bottom: 4px; }
+.reset-box input { width: 100%; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); font-size: 16px; }
+.reset-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.btn-danger { background: var(--bad, #e5484d); color: #fff; border-color: transparent; }

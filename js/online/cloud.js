@@ -221,6 +221,11 @@ window.PP = window.PP || {};
     if (old && nameKey(old) !== nameKey(name)) db.doc('names/' + nameKey(old)).delete().catch(() => {});
     return null;
   };
+  /** give a name back so someone else can take it (only if this player holds it) */
+  Cloud.releaseName = async name => {
+    if (!name) return;
+    try { const ref = db.doc('names/' + nameKey(name)), n = await ref.get(); if (n.exists && n.data().uid === uid) await ref.delete(); } catch (e) { console.warn('Name not released', e); }
+  };
   Cloud.signOut = async () => { await pushSave(true); await auth.signOut(); location.reload(); };
   Cloud.getAccess = async () => { const s = await db.doc('config/access').get(); const d = s.exists ? s.data() : {}; return { players: d.players || [], admins: d.admins || [] }; };
   Cloud.setAccess = a => db.doc('config/access').set({ players: a.players, admins: a.admins, at: firebase.firestore.FieldValue.serverTimestamp() });

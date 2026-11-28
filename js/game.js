@@ -882,6 +882,10 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const trainer = !prof && data.trainers.find(t => t.name === who || PP.Story.trainerName(t) === who);
     $('dlgFace').innerHTML = prof && s.professorImage ? `<img src="${esc(encodeURI(s.professorImage))}" alt="">` : I(prof ? 'user' : trainer ? 'users' : 'user');
     $('dlgFace').classList.toggle('other', !prof);
+    // the Professor stands above the text box while he talks (not during the guided tour, which points at things)
+    const fig = $('storyFigure'), show = prof && !!s.professorFullImage && !story.skip && !$('story').classList.contains('dlg-top');
+    if (show && fig.getAttribute('src') !== encodeURI(s.professorFullImage)) fig.src = encodeURI(s.professorFullImage);
+    if (fig.hidden === show) { fig.hidden = !show; if (show) { fig.classList.remove('in'); void fig.offsetWidth; fig.classList.add('in'); } }
   }
   function showStory() {
     if ($('story').hidden) { $('story').hidden = false; }
@@ -1301,6 +1305,16 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         <div class="row"><span class="row-ic" style="--c:var(--accent)">${I('user')}</span>
           <div class="row-main"><div class="row-title">${esc(PP.Cloud.user.name || 'Google account')}</div><div class="row-sub">${esc(PP.Cloud.user.email)} · progress saved online</div></div>
           <div class="row-side"><button class="btn btn-sm" data-do="sign-out">Sign out</button></div></div>` : ''}
+        <div class="sec-label">Start over</div>
+        ${resetOpen ? `<form class="reset-box" data-form="reset">
+            <p><b>Reset your game?</b> Your Pokémon, items, coins, badges and story progress will be deleted, and your name <b>${esc(save.name)}</b> becomes free for anyone to use. This can’t be undone.</p>
+            <label for="resetName">Type your name to confirm</label>
+            <input id="resetName" autocomplete="off" spellcheck="false" placeholder="${esc(save.name)}">
+            <p class="field-err" id="resetErr"></p>
+            <div class="reset-actions"><button type="button" class="btn" data-do="reset-cancel">Cancel</button><button type="submit" class="btn btn-danger">Reset my game</button></div>
+          </form>`
+          : `<button class="row link-row reset-row" data-do="reset-start"><span class="row-ic" style="--c:var(--bad, #e5484d)">${I('close')}</span>
+            <div class="row-main"><div class="row-title">Reset my game</div><div class="row-sub">Delete your progress and start a new journey</div></div>${I('chevron')}</button>`}
         <p class="muted">Pocket Pals · ${PP.Cloud.on ? 'online' : 'saved on this device'}${data.settings.fastTime ? ' · fast time on' : ''}</p>` };
     },
   };
@@ -1546,6 +1560,21 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     b.textContent = n > 9 ? '9+' : n; b.hidden = !n;
   }
 
+  // ---------------- reset the whole game (Profile & settings) ----------------
+  let resetOpen = false;
+  async function resetGame(typed) {
+    const name = save.name;
+    if (String(typed || '').trim().toLowerCase() !== String(name).trim().toLowerCase()) { $('resetErr').textContent = 'That doesn’t match your name. Type it exactly to confirm.'; return; }
+    const btn = document.querySelector('[data-form="reset"] .btn-danger'); if (btn) { btn.disabled = true; btn.textContent = 'Resetting…'; }
+    S.log('system', `${name} reset their game; the name is free again`);
+    S.releaseName(name);
+    if (PP.Cloud.on) await PP.Cloud.releaseName(name);
+    save = S.newSave(data);                    // also what gets written when the page closes
+    persist();
+    if (PP.Cloud.on && PP.Cloud.flush) await Promise.race([PP.Cloud.flush(), new Promise(r => setTimeout(r, 4000))]);
+    location.reload();
+  }
+
   // ---------------- PC box: team slots and Pokémon details ----------------
   let boxSlot = null, boxDetail = null, boxSort = 'new';
   /** put a box Pokémon into team slot k (0 = Main); swaps with whoever was there */
@@ -1681,7 +1710,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     if (!sheetKind || !SHEETS[sheetKind]) return;
     const body = $('sheetBody'), scroll = body.scrollTop;
     const a = document.activeElement;
-    if (a && (a.id === 'nameInput' || a.id === 'petNameInput' || a.id === 'nickInput')) return;   // don't wipe what's being typed
+    if (a && (a.id === 'nameInput' || a.id === 'petNameInput' || a.id === 'nickInput' || a.id === 'resetName')) return;   // don't wipe what's being typed
     if (sheetKind === 'party' && a && (a.id === 'chatInput' || a.id === 'friendSearch')) return;
     if (sheetKind === 'shop' && a && a.id === 'shopSearch' && $('shopGrid')) { refreshShop(); return; }
     const v = SHEETS[sheetKind]();
@@ -1742,7 +1771,9 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       }
       case 'act': { const a = data.actions.find(x => x.id === id); if (a) doAction(a); break; }
       case 'sheet': openSheet(b.dataset.kind); break;
-      case 'close': closeSheet(); break;
+      case 'close': closeSheet(); resetOpen = false; break;
+      case 'reset-start': resetOpen = true; renderSheet(); setTimeout(() => { const i = $('resetName'); if (i) i.focus(); }, 50); break;
+      case 'reset-cancel': resetOpen = false; renderSheet(); break;
       case 'slot': boxSlot = boxSlot === +id ? null : +id; boxDetail = null; renderSheet(); break;
       case 'slot-cancel': boxSlot = null; renderSheet(); break;
       case 'cell': if (longPressed) { longPressed = false; break; } if (boxSlot != null) placeInSlot(id, boxSlot); else { boxDetail = id; renderSheet(); } break;
@@ -1791,6 +1822,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         if (!why) $('nameInput').blur();
       });
     }
+    if (e.target.dataset.form === 'reset') { e.preventDefault(); resetGame($('resetName').value); }
     if (e.target.dataset.form === 'nick') {
       e.preventDefault();
       const x = save.box.find(b => b.uid === e.target.dataset.uid), v = String($('nickInput').value || '').trim().slice(0, 16);
