@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 27,
+  contentVersion: 28,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -141,6 +141,9 @@ PP.SCHEMA = {
     { id: 'battle', label: 'Battles', icon: 'bolt', desc: 'Wild battles, catching, EXP and healing. Moves are under Content → Moves; each Pokémon’s moves are in its “Moves learned”.', fields: [
       { key: 'pvpTurnSeconds', label: 'Friend battles: time to choose', type: 'int', min: 10, max: 120, def: 30, suffix: 'sec', help: 'When it runs out, a random move is chosen.' },
       { key: 'teamMax', label: 'Team size', type: 'int', min: 1, max: 6, def: 6, help: 'How many Pokémon can battle with you.' },
+      { key: 'expShareBadges', label: 'EXP Share: badges needed', type: 'int', min: 0, max: 16, def: 1, help: 'The Professor gives the EXP Share after this many badges (0 = from the start).' },
+      { key: 'expSharePercent', label: 'EXP Share: what the rest of the team gets', type: 'int', min: 0, max: 100, def: 50, suffix: '% of the EXP', help: 'Team members that didn’t battle (and haven’t fainted) get this share.' },
+      { key: 'expShareLines', label: 'EXP Share: the Professor’s call', type: 'textarea', max: 800, def: 'Ring ring… {name}! It’s Professor Kou. Congratulations on your first badge!\nI’ve sent you something special: the EXP Share.\nWith it, your whole team gains EXP from battles, even the Pokémon that don’t fight.\nYou can turn it on or off any time in Profile & settings. Keep it up!' },
       { key: 'battleExpMult', label: 'Battle EXP multiplier', type: 'number', min: 0, max: 10, step: 0.1, def: 1 },
       { key: 'trainerExpMult', label: 'Extra EXP from trainers', type: 'number', min: 1, max: 5, step: 0.1, def: 1.5 },
       { key: 'catchMult', label: 'Catch chance multiplier', type: 'number', min: 0.1, max: 10, step: 0.1, def: 1 },

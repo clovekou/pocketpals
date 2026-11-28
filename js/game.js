@@ -818,7 +818,8 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const bgs = trainer ? trainerBgs(trainer, area) : battleBgs(area);
     PP.Audio.play(battleMusic(trainer));
     PP.Battle.start({
-      root: layer, data, kind: trainer ? 'trainer' : 'wild', foes, team: teamEntries(), bag: save.inventory, protect, noSuperEffective: !!(trainer && trainer.noSuperEffective),
+      root: layer, data, kind: trainer ? 'trainer' : 'wild', foes, team: teamEntries(), bag: save.inventory, protect,
+      expShare: save.expShare && save.expShareOn ? data.settings.expSharePercent / 100 : 0, noSuperEffective: !!(trainer && trainer.noSuperEffective),
       trainer: trainer ? { name: PP.Story.trainerName(trainer), prize: trainer.prize } : null,
       backgrounds: bgs, loseText: `You hurry back to ${(locOf(save.lastTown) || { name: 'town' }).name}. Your Pokémon are healed.`,
       onEnd: endBattle,
@@ -864,6 +865,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         save.badges[t.badge] = Date.now();
         S.log('story', `Received the ${b ? b.name : t.badge}`);
         after.push(`You received the ${b ? b.name : 'badge'}!`);
+        if (!save.expShare && Object.keys(save.badges).length >= data.settings.expShareBadges) { giveExpShare(); after = after.concat(linesOf('expShareLines')); }
       }
     } else if (r.outcome === 'beat') {
       S.log('battle', `Beat a wild ${foe.name} (Lv ${r.foe.level}) at ${area.name}`); bump('battle:win'); bump('battle:wild');
@@ -1086,6 +1088,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     }
     if (!petSpecies()) return say(linesOf('afterNameLines'), () => openSheet('starter'));
     if (!save.tutorialDone) return say(linesOf('afterStarterLines'), () => tour(0));
+    expShareCatchUp();
   }
   function tour(i) {
     const steps = data.tutorial.filter(t => t.enabled);
@@ -1424,6 +1427,10 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         ${SO.on ? `<div class="f-me"><b>${esc(save.name)}</b><span>Your unique player name. Friends find you by it, so it can’t be changed.</span></div>`
           : `<form class="field" data-form="name"><input id="nameInput" maxlength="${data.settings.nameMax}" value="${esc(save.name)}" autocomplete="off" spellcheck="false"><button class="btn btn-primary" type="submit">Save</button></form>
         <p class="field-err" id="nameErr"></p>`}
+        ${save.expShare ? `<div class="sec-label">Items</div>
+        <label class="row toggle-row"><span class="row-ic" style="--c:var(--accent)">${I('users')}</span>
+          <div class="row-main"><div class="row-title">EXP Share</div><div class="row-sub">Your whole team gains ${data.settings.expSharePercent}% of battle EXP</div></div>
+          <span class="switch"><input type="checkbox" data-expshare ${save.expShareOn ? 'checked' : ''}><span></span></span></label>` : ''}
         <div class="sec-label">Your rival’s name</div>
         <form class="field" data-form="rival"><input id="rivalInput" maxlength="${data.settings.nameMax}" value="${esc(save.rivalName)}" autocomplete="off" spellcheck="false"><button class="btn btn-primary" type="submit">Save</button></form>
         <p class="field-err" id="rivalErr"></p>
@@ -1829,6 +1836,18 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const it = itemOf(e.held); addItem(e.held, 1); S.log('item', `Took the ${it ? it.name : e.held} from ${labelOf(e)}`); e.held = ''; commit();
   }
 
+  // ---------------- EXP Share ----------------
+  function giveExpShare() {
+    if (save.expShare) return;
+    save.expShare = true; save.expShareOn = true;
+    S.log('item', 'Professor Kou gave you the EXP Share');
+  }
+  /** players who already had enough badges get the Professor's call once */
+  function expShareCatchUp() {
+    if (save.expShare || !save.tutorialDone || storyOn() || Object.keys(save.badges).length < data.settings.expShareBadges) return;
+    giveExpShare(); commit(); say(linesOf('expShareLines'));
+  }
+
   // ---------------- reset the whole game (Profile & settings) ----------------
   let resetOpen = false;
   async function resetGame(typed) {
@@ -2096,6 +2115,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     }
   });
   document.addEventListener('change', e => {
+    if (e.target.dataset && 'expshare' in e.target.dataset) { save.expShareOn = e.target.checked; S.log('item', `EXP Share turned ${save.expShareOn ? 'on' : 'off'}`); commit(); toast(`EXP Share ${save.expShareOn ? 'on' : 'off'}`); return; }
     const k = e.target.dataset && e.target.dataset.audio;
     if (k) { PP.Audio.setPrefs({ [k]: e.target.checked }); if (k === 'music' && e.target.checked) PP.Audio.play(battleCtx ? battleMusic(battleCtx.trainer) : data.settings.musicHome); }
   });

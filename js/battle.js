@@ -535,6 +535,19 @@
           if (me.hp > 0) {
             const n = Math.max(1, Math.floor(f.sp.baseExp * f.lv / 7 * set.battleExpMult * (B.kind === 'trainer' ? set.trainerExpMult : 1)));
             await gainExp(me, n);
+            // EXP Share: the rest of the team (not fainted) gets a part of it, quietly
+            const share = Math.floor(n * (o.expShare || 0));
+            const others = share > 0 ? party.filter(m => m !== me && m.hp > 0 && m.lv < 100) : [];
+            if (others.length) {
+              others.forEach(m => {
+                m.exp += share;
+                const lv = Math.min(100, PP.store.levelForExp(m.sp.growth, m.exp));
+                if (lv > m.lv) { m.lv = lv; stats(m); B.log.push(`${m.name} grew to Lv ${m.lv} (EXP Share)`); m.moves = movesAt(d, m.sp, m.lv).map(x => Object.assign(x, { left: (m.moves.find(y => y.id === x.id) || x).left })); }
+              });
+              await say(`The rest of your team gained ${share} EXP thanks to the EXP Share!`, 400);
+              const grew = others.filter(m => B.log.some(l => l === `${m.name} grew to Lv ${m.lv} (EXP Share)`));
+              if (grew.length) { sfx('levelup'); await say(grew.map(m => `${m.name} grew to Lv ${m.lv}!`).join(' ')); }
+            }
           }
           if (B.kind === 'trainer' && B.fi < foes.length - 1) {
             B.fi++;
