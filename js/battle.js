@@ -191,6 +191,7 @@
         busy = false;
         $('msgText').textContent = `What will ${cur().name} do?`; $('msgNext').hidden = true;
         const trainer = vsTrainer;
+        if (PVP) startClock(randomTurn);
         if (PVP) return menu(`<div class="cmds">
           <button class="cmd" data-c="fight" style="--c:#e03b3b"><span class="cmd-ic">${I('swords')}</span><span>Fight<small>${cur().moves.length} move${cur().moves.length === 1 ? '' : 's'}</small></span></button>
           <button class="cmd" data-c="bag" style="--c:#e9a100" disabled><span class="cmd-ic">${I('bag')}</span><span>Bag<small>Not in friend battles</small></span></button>
@@ -439,6 +440,27 @@
         await afterTurn();
       }
       // ---- friend battles
+      // 30 seconds to choose each turn; when time runs out a random move (or Pokémon) is chosen
+      const TURN_SECONDS = (set.pvpTurnSeconds || 30);
+      let pvpClock = null;
+      function stopClock() { clearInterval(pvpClock); pvpClock = null; const c = $('pvpClock'); if (c) c.remove(); }
+      function startClock(onTimeout) {
+        stopClock(); if (!PVP || B.over) return;
+        const end = Date.now() + TURN_SECONDS * 1000;
+        const chip = document.createElement('div'); chip.className = 'pvp-clock'; chip.dataset.b = 'pvpClock';
+        $('console').appendChild(chip);
+        const tick = () => {
+          const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+          chip.textContent = left + 's'; chip.classList.toggle('low', left <= 10);
+          if (left <= 0) { stopClock(); onTimeout(); }
+        };
+        tick(); pvpClock = setInterval(tick, 250);
+      }
+      function randomTurn() {                      // time's up: pick any move that still has PP
+        if (busy || B.over) return;
+        const ok = cur().moves.filter(m => m.left > 0);
+        turn({ type: 'move', move: ok.length ? ok[Math.floor(Math.random() * ok.length)] : STRUGGLE });
+      }
       let forcedPick = null;
       const encode = a => a.type === 'move' ? { type: 'move', i: a.move === STRUGGLE ? -1 : cur().moves.indexOf(a.move) } : a.type === 'switch' ? { type: 'switch', i: a.i } : { type: a.type };
       const waiting = () => { $('console').classList.add('full'); $('menu').hidden = true; $('msgNext').hidden = true; $('msgText').textContent = `Waiting for ${tName}…`; };
@@ -457,7 +479,7 @@
         hud('foe'); showHud('foe', true); await cry(foe());
       }
       async function pvpTurn(a) {
-        busy = true;
+        busy = true; stopClock();
         const mine = encode(a), theirs = await trade(mine);
         if (mine.type === 'forfeit') { await say('You gave up the battle.'); return finish('lost'); }
         if (theirs.type === 'forfeit' || theirs.type === 'timeout') { await say(theirs.type === 'timeout' ? `${tName} stopped responding.` : `${tName} gave up!`); return finish('won'); }
@@ -492,7 +514,10 @@
           let mine = { type: 'none' };
           if (meOut) {
             await say('Who will you send out next?', 300);
-            const i = await new Promise(res => { forcedPick = res; busy = false; partyMenu(true); });
+            const i = await new Promise(res => {
+              forcedPick = v => { stopClock(); res(v); }; busy = false; partyMenu(true);
+              startClock(() => { const ok = party.map((m, k) => m.hp > 0 ? k : -1).filter(k => k >= 0); if (forcedPick) { const f = forcedPick; forcedPick = null; f(ok[Math.floor(Math.random() * ok.length)]); } });
+            });
             mine = { type: 'switch', i };
           }
           busy = true;
@@ -528,7 +553,7 @@
       }
 
       function finish(outcome) {
-        if (B.over) return; B.over = true; busy = true;
+        if (B.over) return; B.over = true; busy = true; if (typeof stopClock === 'function') stopClock();
         if (PP.Audio) { if (outcome === 'won' || outcome === 'beat' || outcome === 'caught') { PP.Audio.stop(); sfx('victory'); } else if (outcome === 'lost' || outcome === 'draw') { PP.Audio.stop(); sfx('lose'); } }
         // write the battle back onto the player's Pokémon (friend battles never change your Pokémon)
         if (!PVP) party.forEach(m => { m.ref.hp = m.hp >= m.maxhp ? null : Math.max(0, m.hp); m.ref.exp = m.exp; m.ref.level = m.lv; });

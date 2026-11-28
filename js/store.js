@@ -55,7 +55,7 @@
         .concat(actions.map(a => ['action:' + a.id, `Use “${a.label}”`]))
         .concat([['explore:any', 'Explore any area']])
         .concat(locs.map(l => ['explore:' + l.id, `Explore ${l.name}`]))
-        .concat([['see:any', 'Meet a wild Pokémon'], ['catch:any', 'Catch a Pokémon'], ['battle:win', 'Win a battle (any)'], ['battle:wild', 'Beat a wild Pokémon'], ['battle:trainer', 'Beat a trainer'],
+        .concat([['see:any', 'Meet a wild Pokémon'], ['catch:any', 'Catch a Pokémon'], ['evolve', 'Evolve a Pokémon'], ['battle:win', 'Win a battle (any)'], ['battle:wild', 'Beat a wild Pokémon'], ['battle:trainer', 'Beat a trainer'],
           ['heal', 'Heal the team in a town'], ['buy:any', 'Buy from the shop'], ['use:any', 'Use an item']])
         .concat((d.chapters || []).map(c => ['chapter:' + c.id, `Finish Chapter ${c.number}: ${c.title}`]))
         .concat((d.badges || []).map(b => ['badge:' + b.id, `Earn the ${b.name}`]))
@@ -210,6 +210,7 @@
       const exp = Math.max(num(e.exp, 0, 1e9, 0, true), expForLevel(sp && sp.growth, level));
       return { uid, species: e.species, nickname: String(e.nickname || '').slice(0, 16).trim(), since: Number(e.since) || Date.now(),
         level: levelForExp(sp && sp.growth, exp), exp, caughtAt: String(e.caughtAt || '').slice(0, 40),
+        friendship: num(e.friendship, 0, 255, 70, true), held: d.items.some(it => it.id === e.held) ? e.held : '',
         hp: e.hp == null || e.hp === '' ? null : num(e.hp, 0, 9999, 0, true) };     // null = full HP
     });
     out.partner = out.box.some(e => e.uid === raw.partner) ? raw.partner : (out.box[0] ? out.box[0].uid : '');

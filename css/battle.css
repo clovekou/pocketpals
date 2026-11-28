@@ -128,3 +128,6 @@ html, body { height: 100%; }
 /* sub-menus (moves, bag, party) use the whole console */
 .battle .console.sub .msg { display: none; }
 .battle .console.sub .menu { margin-top: 0; }
+.battle .pvp-clock { position: absolute; top: 12px; right: 14px; min-width: 40px; height: 26px; padding: 0 8px; border-radius: 99px; background: var(--surface-2);
+  color: var(--text); font-weight: 800; font-size: 13px; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.battle .pvp-clock.low { background: #e5484d; color: #fff; }

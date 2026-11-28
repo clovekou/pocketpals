@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 25,
+  contentVersion: 27,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -139,6 +139,7 @@ PP.SCHEMA = {
       { key: 'emoLow', label: 'Face when a need is low', type: 'select', optionsFrom: 'emotions', def: 'Sad' },
     ] },
     { id: 'battle', label: 'Battles', icon: 'bolt', desc: 'Wild battles, catching, EXP and healing. Moves are under Content → Moves; each Pokémon’s moves are in its “Moves learned”.', fields: [
+      { key: 'pvpTurnSeconds', label: 'Friend battles: time to choose', type: 'int', min: 10, max: 120, def: 30, suffix: 'sec', help: 'When it runs out, a random move is chosen.' },
       { key: 'teamMax', label: 'Team size', type: 'int', min: 1, max: 6, def: 6, help: 'How many Pokémon can battle with you.' },
       { key: 'battleExpMult', label: 'Battle EXP multiplier', type: 'number', min: 0, max: 10, step: 0.1, def: 1 },
       { key: 'trainerExpMult', label: 'Extra EXP from trainers', type: 'number', min: 1, max: 5, step: 0.1, def: 1.5 },
@@ -315,9 +316,18 @@ PP.SCHEMA = {
         { key: 'growth', label: 'Levelling speed', type: 'select', def: 'medium', options: [['fast', 'Fast'], ['medium', 'Medium'], ['medium-slow', 'Medium slow'], ['slow', 'Slow'], ['erratic', 'Erratic'], ['fluctuating', 'Fluctuating']] },
         { key: 'legendary', label: 'Legendary or mythical', type: 'bool', def: false, help: 'Kept out of ordinary encounter tables (the content check warns about it).' },
         { key: 'evolvesFrom', label: 'Evolves from (Dex number)', type: 'int', min: 0, max: 9999, def: 0 },
+        { key: 'evoMethod', label: 'How it evolves from that Pokémon', type: 'select', def: 'none', options: [['none', 'It doesn’t (or not in this game)'], ['level', 'Reach a level'], ['item', 'Use an item on it'], ['happiness', 'High friendship, then level up'], ['trade', 'Trade it to a friend']] },
+        { key: 'evoLevel', label: 'Evolution: level', type: 'int', min: 1, max: 100, def: 1, help: 'For “Reach a level”. Level 1 + a held item = any level-up while holding it.' },
+        { key: 'evoItem', label: 'Evolution: item to use', type: 'select', optionsFrom: 'itemsOrNone', def: 'none' },
+        { key: 'evoHeld', label: 'Evolution: item it must hold', type: 'select', optionsFrom: 'itemsOrNone', def: 'none', help: 'For levelling up or trading while holding an item. The item is used up.' },
+        { key: 'evoTime', label: 'Evolution: time of day', type: 'select', def: 'any', options: [['any', 'Any time'], ['day', 'Day (6:00–17:59)'], ['night', 'Night (18:00–5:59)']] },
+        { key: 'evoHappiness', label: 'Evolution: friendship needed', type: 'int', min: 0, max: 255, def: 220 },
         { key: 'learnset', label: 'Moves learned', type: 'textarea', def: '1:tackle', max: 600, help: 'level:move, separated by commas, e.g. 1:tackle,1:ember,8:quick-attack. A Pokémon knows the last 4 it has reached.' },
       ],
-      rows: PP.POKEMON_CATALOG || [],
+      // evolution rules from js/catalog-evolution.js (tools/build_evolutions.py), keyed by the evolved Pokémon
+      rows: (PP.POKEMON_CATALOG || []).map(p => { const e = (PP.EVOLUTION || {})[p.id];
+        return Object.assign({}, p, { evoMethod: e && p.evolvesFrom ? e.method : 'none', evoLevel: (e && e.level) || 1, evoItem: (e && e.item) || 'none',
+          evoHeld: (e && e.held) || 'none', evoTime: (e && e.time) || 'any', evoHappiness: (e && e.happiness) || 220 }); }),
     },
 
     needs: {

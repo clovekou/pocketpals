@@ -199,7 +199,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     bump('action:' + a.id);
     gainExp(a.exp);
     commit();
-    playAnim(a.anim); PP.Audio.sfx('pop');
+    playAnim(a.anim); PP.Audio.sfx('pop'); friendUp(partnerEntry(), 2);
     react(a.emotion);
   }
 
@@ -650,7 +650,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     const s = data.settings, list = budList(), ids = new Set(list.map(b => b.e.uid));
     Object.keys(BUD).forEach(u => { if (!ids.has(u)) delete BUD[u]; });
     list.forEach((b, i) => {
-      if (!BUD[b.e.uid]) { BUD[b.e.uid] = { x: 0.14 + (i / Math.max(1, list.length - 1 || 1)) * 0.72 + (Math.random() - .5) * .06, y: Math.random(), tx: 0, ty: 0, dir: Math.random() < .5 ? 'downleft' : 'downright', mode: 'idle', until: t + 1 + Math.random() * 4, with: null, bubble: '', hop: 0 };
+      if (!BUD[b.e.uid]) { BUD[b.e.uid] = { x: 0.2 + (i / Math.max(1, list.length - 1 || 1)) * 0.6 + (Math.random() - .5) * .04, y: Math.random(), tx: 0, ty: 0, dir: Math.random() < .5 ? 'downleft' : 'downright', mode: 'idle', until: t + 1 + Math.random() * 4, with: null, bubble: '', hop: 0 };
         PP.Sprite.preload(b.sp.folder, ['Idle', 'Walk', 'Sleep', 'Hop']); }
     });
     const speed = s.petWalkSpeed / 300 * 0.7 * dt;
@@ -674,10 +674,10 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         else if (r < 0.42 && free.length) {                   // walk over to a friend and chat
           const o = BUD[free[Math.floor(Math.random() * free.length)].e.uid];
           const sideOf = o.x > 0.5 ? -1 : 1;
-          st.mode = 'chat'; st.with = free.find(f => BUD[f.e.uid] === o).e.uid; st.tx = Math.max(0.08, Math.min(0.92, o.x + sideOf * 0.12)); st.ty = o.y; st.met = false;
+          st.mode = 'chat'; st.with = free.find(f => BUD[f.e.uid] === o).e.uid; st.tx = Math.max(0.2, Math.min(0.8, o.x + sideOf * 0.12)); st.ty = o.y; st.met = false;
           st.word = BUBBLES[Math.floor(Math.random() * BUBBLES.length)]; st.side = 0;
           o.mode = 'chat'; o.with = b.e.uid; o.met = true; o.walking = false; o.tx = o.x; o.ty = o.y; o.until = t + 12; o.word = BUBBLES[Math.floor(Math.random() * BUBBLES.length)]; o.side = 1;
-        } else if (r < 0.8) { st.mode = 'walk'; st.tx = 0.08 + Math.random() * 0.84; st.ty = Math.random(); }
+        } else if (r < 0.8) { st.mode = 'walk'; st.tx = 0.2 + Math.random() * 0.6; st.ty = Math.random(); }   // stay clear of the screen edges
         else { st.mode = 'idle'; st.until = t + 3 + Math.random() * 5; }
       }
     });
@@ -731,7 +731,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       const p = budBox(b, W, H), bb = PP.Sprite.idleBox(b.sp.folder);
       if (Math.abs(px - p.x) < bb.w * p.scale * 0.6 && py < p.y + 8 && py > p.y - bb.h * p.scale - 8) {
         st.hop = t; if (st.mode === 'sleep') { st.mode = 'idle'; st.until = t + 3; }
-        PP.Audio.cry(b.sp.folder, false, b.sp.id); return;
+        return;                                               // a quiet hop (no cry)
       }
     }
   });
@@ -886,9 +886,10 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     lastExplore = t ? null : { kind: 'battle', area: area.name, outcome: r.outcome, name: foe.name, folder: foe.folder, level: r.foe.level };
     commit();
     if (r.outcome === 'caught') react(data.settings.emoLevel);
+    if (r.outcome === 'won' || r.outcome === 'beat' || r.outcome === 'caught') { teamEntries().forEach(x => friendUp(x, 1)); friendUp(partnerEntry(), 1); }
     const onPath = ctx.walk && walk;
     if (onPath && r.outcome === 'lost') endWalk(false);           // sent back to town: the trip ends
-    const finish = () => { if (stepDone) completeStep(step); else if (onPath && r.outcome !== 'lost') resumeWalk(); else { exploreTab = step ? 'story' : exploreTab; openSheet('explore'); } };
+    const finish = () => { setTimeout(checkEvolutions, 400); if (stepDone) completeStep(step); else if (onPath && r.outcome !== 'lost') resumeWalk(); else { exploreTab = step ? 'story' : exploreTab; openSheet('explore'); } };
     if (after.length) say(after, finish); else finish();
   }
   const linesOf2 = txt => String(txt || '').split('\n').map(x => x.trim()).filter(Boolean);
@@ -1249,8 +1250,10 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
           <div class="row-sub">${esc(it.description || (it.effectNeed !== 'none' ? `${it.effectAmount >= 0 ? '+' : ''}${it.effectAmount} ${needOf(it.effectNeed).label}` : ''))}</div></div>
           <div class="row-side">
             ${it.effectNeed !== 'none' ? `<button class="btn btn-primary btn-sm" data-do="use" data-id="${esc(it.id)}">Use</button>` : ''}
+            ${evoItemIds().has(it.id) || it.id === 'rare-candy' ? `<button class="btn btn-primary btn-sm" data-do="bag-on" data-id="${esc(it.id)}" data-mode="use">Use on…</button>` : ''}
+            ${holdable(it) ? `<button class="btn btn-sm" data-do="bag-on" data-id="${esc(it.id)}" data-mode="give">Give</button>` : ''}
             ${it.sell > 0 ? `<button class="btn btn-sm" data-do="sell" data-id="${esc(it.id)}">Sell ${fmt(it.sell)}</button>` : ''}
-          </div></div>`).join('') : empty('bag', 'Your bag is empty', 'Buy things in the shop or find them while exploring.') };
+          </div></div>${bagPick && bagPick.id === it.id ? bagPickHTML(it) : ''}`).join('') : empty('bag', 'Your bag is empty', 'Buy things in the shop or find them while exploring.') };
     },
     shop() {
       if (!data.settings.shopOpen) return { title: data.settings.tabShop, body: empty('cart', 'The shop is closed', 'Check back later.') };
@@ -1572,13 +1575,15 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
   }
   function putIn(entry, from) {
     const sp = speciesOf(entry.species); if (!sp) return null;
-    const e = { uid: newUid(), species: sp.id, nickname: entry.nickname || '', since: Date.now(), level: entry.level, exp: entry.exp, hp: null, caughtAt: from };
+    const e = { uid: newUid(), species: sp.id, nickname: entry.nickname || '', since: Date.now(), level: entry.level, exp: entry.exp, hp: null, caughtAt: from,
+      held: entry.held && itemOf(entry.held) ? entry.held : '', friendship: 70 };
+    if (/^Traded/.test(from)) setTimeout(() => { const to = canEvolve(e, 'trade'); if (to) queueEvolution(e, to); }, 900);   // trade evolutions
     save.box.push(e);
     if (save.team.length < data.settings.teamMax) save.team.push(e.uid);
     save.dex.seen[sp.id] = save.dex.seen[sp.id] || Date.now(); save.dex.caught[sp.id] = save.dex.caught[sp.id] || Date.now();
     return e;
   }
-  const plain = e => ({ species: e.species, level: e.level, exp: e.exp, nickname: e.nickname || '' });
+  const plain = e => ({ species: e.species, level: e.level, exp: e.exp, nickname: e.nickname || '', held: e.held || '', friendship: e.friendship || 70 });
   async function offerTrade(friendUid, entryUid) {
     const f = SO.friend(friendUid), e = save.box.find(x => x.uid === entryUid);
     if (!f || !e || !tradeable().includes(e)) return;
@@ -1692,6 +1697,138 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     b.textContent = n > 9 ? '9+' : n; b.hidden = !n;
   }
 
+  // ---------------- evolution ----------------
+  const dayPart = () => { const h = new Date().getHours(); return h >= 6 && h < 18 ? 'day' : 'night'; };
+  /** the Pokémon this one can evolve into (any way) */
+  const evoTargets = e => { const sp = e && speciesOf(e.species); return sp ? data.pokemon.filter(p => p.evolvesFrom === sp.dex && p.evoMethod !== 'none' && PP.Sprite.has(p.folder)) : []; };
+  /** what it evolves into right now, for how = 'level' (after levelling / friendship), 'item' (using `item`) or 'trade' */
+  function canEvolve(e, how, item) {
+    return evoTargets(e).find(p => {
+      if (p.evoTime !== 'any' && p.evoTime !== dayPart()) return false;
+      const heldOk = p.evoHeld === 'none' || e.held === p.evoHeld;
+      if (how === 'item') return p.evoMethod === 'item' && p.evoItem === item;
+      if (how === 'trade') return p.evoMethod === 'trade' && heldOk;
+      return heldOk && ((p.evoMethod === 'level' && e.level >= p.evoLevel && (p.evoLevel > 1 || p.evoHeld !== 'none')) || (p.evoMethod === 'happiness' && (e.friendship || 0) >= p.evoHappiness));
+    }) || null;
+  }
+  /** "Lv 16", "Use a Fire Stone", "Trade while holding a Metal Coat at night"… */
+  function evoHowText(p) {
+    const it = id => (itemOf(id) || { name: id }).name, when = p.evoTime === 'day' ? ' during the day' : p.evoTime === 'night' ? ' at night' : '';
+    const hold = p.evoHeld !== 'none' ? ` while holding a ${it(p.evoHeld)}` : '';
+    if (p.evoMethod === 'item') return `Use a ${it(p.evoItem)}${when}`;
+    if (p.evoMethod === 'trade') return `Trade it${hold}`;
+    if (p.evoMethod === 'happiness') return `Level up with high friendship${when}`;
+    return p.evoLevel > 1 ? `Reach Lv ${p.evoLevel}${hold}${when}` : `Level up${hold}${when}`;
+  }
+  const friendUp = (e, n) => { if (e) e.friendship = clamp((e.friendship || 70) + n, 0, 255); };
+  const evoQueue = []; let evolving = false;
+  function queueEvolution(e, to, useItem) {
+    if (!e || !to || evoQueue.some(j => j.uid === e.uid)) return;
+    evoQueue.push({ uid: e.uid, to: to.id, useItem });
+    if (!evolving) setTimeout(nextEvolution, 350);
+  }
+  /** check the team after battles and level-ups */
+  function checkEvolutions() { teamEntries().forEach(e => { const to = canEvolve(e, 'level'); if (to) queueEvolution(e, to); }); }
+  function nextEvolution() {
+    const job = evoQueue.shift();
+    if (!job) { evolving = false; return; }
+    if (storyOn() || !$('battleLayer').hidden) { evoQueue.unshift(job); setTimeout(nextEvolution, 800); return; }
+    evolving = true;
+    const e = save.box.find(x => x.uid === job.uid), from = e && speciesOf(e.species), to = speciesOf(job.to);
+    if (!e || !from || !to) return nextEvolution();
+    const oldName = labelOf(e);
+    playEvolution(from, to, oldName, () => {
+      e.species = to.id;
+      if (e.nickname === from.name) e.nickname = '';
+      e.exp = Math.max(e.exp || 0, S.expForLevel(to.growth, e.level)); e.hp = null;
+      if (to.evoHeld !== 'none' && e.held === to.evoHeld) e.held = '';            // held evolution items are used up
+      if (job.useItem) addItem(job.useItem, -1);
+      save.dex.seen[to.id] = save.dex.seen[to.id] || Date.now(); save.dex.caught[to.id] = save.dex.caught[to.id] || Date.now();
+      S.log('pokemon', `${oldName} evolved into ${to.name}!`);
+      bump('evolve');
+      if (e.uid === save.partner) PP.Sprite.preload(to.folder);
+      commit();
+      say([`Congratulations! Your ${oldName} evolved into ${to.name}!`], nextEvolution);
+    });
+  }
+  /** the classic glowing evolution: the two shapes flicker faster and faster, then the new one appears */
+  function playEvolution(from, to, oldName, done) {
+    const layer = $('evoLayer'), cv = $('evoCv'), txt = $('evoText');
+    layer.hidden = false; txt.textContent = `What? ${oldName} is evolving!`;
+    PP.Sprite.preload(from.folder, ['Idle']); PP.Sprite.preload(to.folder, ['Idle']);
+    PP.Audio.cry(from.folder, false, from.id);
+    let over = false; const finish = () => { if (over) return; over = true; layer.hidden = true; done(); };
+    const t0 = performance.now(), DUR = 4200, g = cv.getContext('2d');
+    const buf = document.createElement('canvas'), bg = buf.getContext('2d');
+    (function frame(now) {
+      const k = Math.min(1, (now - t0) / DUR), r = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+      if (r.width < 2 || r.height < 2) return requestAnimationFrame(frame);          // not laid out yet
+      if (cv.width !== Math.round(r.width * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); buf.width = cv.width; buf.height = cv.height; }
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
+      const W = r.width, H = r.height, cx = W / 2, cy = H * .55, sc = 4;
+      // which shape shows: flickers faster as k grows; the new one stays at the end
+      const showNew = k >= .9 || (k > .25 && Math.sin(Math.pow(k, 2.2) * 90) > 0);
+      const sp = showNew ? to : from;
+      bg.setTransform(1, 0, 0, 1, 0, 0); bg.clearRect(0, 0, buf.width, buf.height); bg.setTransform(dpr, 0, 0, dpr, 0, 0);
+      PP.Sprite.draw(bg, sp.folder, { x: cx, y: cy, scale: sc * (sp.size || 100) / 100, t: now / 1000, anim: 'Idle', dir: 'down' });
+      if (k < .92) { bg.globalCompositeOperation = 'source-atop'; bg.fillStyle = `rgba(255,255,255,${k < .1 ? k * 10 : 1})`; bg.fillRect(0, 0, W, H); bg.globalCompositeOperation = 'source-over'; }
+      // glow
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const glow = g.createRadialGradient(cx, cy - 40, 10, cx, cy - 40, 190);
+      glow.addColorStop(0, `rgba(255,255,255,${.25 + .35 * k})`); glow.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = glow; g.fillRect(0, 0, W, H);
+      g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(buf, 0, 0);
+      if (over) return;
+      if (k < 1) return requestAnimationFrame(frame);
+      PP.Audio.cry(to.folder, false, to.id); PP.Audio.sfx('levelup');
+      txt.textContent = `${oldName} evolved into ${to.name}!`;
+      setTimeout(finish, 1200);
+    })(t0);
+    setTimeout(finish, DUR + 4000);                              // never stuck, even if the animation is paused
+  }
+
+  // ---------------- items on Pokémon: evolution items, Rare Candy, held items ----------------
+  let bagPick = null;                               // { id, mode: 'use' | 'give' } while choosing a Pokémon in the Bag
+  const evoItemIds = () => new Set(data.pokemon.filter(p => p.evoMethod === 'item').map(p => p.evoItem));
+  const heldItemIds = () => new Set(data.pokemon.map(p => p.evoHeld).filter(x => x && x !== 'none'));
+  const holdable = it => it.category === 'hold' || heldItemIds().has(it.id);
+  function bagPickHTML(it) {
+    const rows = save.box.map(e => {
+      const sp = speciesOf(e.species); if (!sp) return '';
+      let ok = true, note = '';
+      if (bagPick.mode === 'use' && it.id === 'rare-candy') { ok = e.level < 100; note = ok ? `Lv ${e.level} → ${e.level + 1}` : 'Already Lv 100'; }
+      else if (bagPick.mode === 'use') { const to = canEvolve(e, 'item', it.id); ok = !!to; note = to ? `Evolves into ${to.name}` : 'Won’t work'; }
+      else note = e.held ? `Holding ${(itemOf(e.held) || { name: e.held }).name}` : 'Not holding anything';
+      return `<button class="pick-row${ok ? '' : ' off'}" data-do="bag-apply" data-id="${esc(e.uid)}" ${ok ? '' : 'disabled'}>${PP.Sprite.portrait(sp.folder) ? `<img class="pix" src="${PP.Sprite.portrait(sp.folder)}" alt="">` : ''}
+        <span><b>${esc(labelOf(e))}</b><small>Lv ${e.level} · ${esc(note)}</small></span></button>`;
+    }).join('');
+    return `<div class="bag-pick"><p>${bagPick.mode === 'give' ? `Give the ${esc(it.name)} to:` : `Use the ${esc(it.name)} on:`}</p>${rows}<button class="btn btn-sm" data-do="bag-pick-cancel">Cancel</button></div>`;
+  }
+  function bagApply(uid) {
+    const it = itemOf(bagPick && bagPick.id), e = save.box.find(x => x.uid === uid); if (!it || !e || !(save.inventory[it.id] > 0)) return;
+    const mode = bagPick.mode; bagPick = null;
+    if (mode === 'give') {
+      if (e.held) addItem(e.held, 1);
+      e.held = it.id; addItem(it.id, -1);
+      S.log('item', `${labelOf(e)} is now holding a ${it.name}`); commit(); toast(`${labelOf(e)} is holding the ${it.name}`);
+      const to = canEvolve(e, 'level'); if (to && to.evoLevel <= 1) toast('Level it up to see what happens…');
+      return;
+    }
+    if (it.id === 'rare-candy') {
+      const sp = speciesOf(e.species); addItem(it.id, -1);
+      e.level = Math.min(100, e.level + 1); e.exp = Math.max(e.exp || 0, S.expForLevel(sp.growth, e.level)); friendUp(e, 1);
+      S.log('item', `Used a Rare Candy: ${labelOf(e)} grew to Lv ${e.level}`); commit(); toast(`${labelOf(e)} grew to Lv ${e.level}!`); PP.Audio.sfx('levelup');
+      const to = canEvolve(e, 'level'); if (to) queueEvolution(e, to);
+      return;
+    }
+    const to = canEvolve(e, 'item', it.id); if (!to) return toast('It won’t have any effect.');
+    closeSheet(); queueEvolution(e, to, it.id);                  // the item is used up when the evolution finishes
+  }
+  function takeHeld(uid) {
+    const e = save.box.find(x => x.uid === uid); if (!e || !e.held) return;
+    const it = itemOf(e.held); addItem(e.held, 1); S.log('item', `Took the ${it ? it.name : e.held} from ${labelOf(e)}`); e.held = ''; commit();
+  }
+
   // ---------------- reset the whole game (Profile & settings) ----------------
   let resetOpen = false;
   async function resetGame(typed) {
@@ -1765,6 +1902,11 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         <div class="bd-line"><span>HP</span><span class="st-bar wide"><i style="width:${hpOf(e) / maxHp(e) * 100}%;background:var(--good)"></i></span><small class="tnum">${Math.floor(hpOf(e))}/${maxHp(e)}</small></div>
         <div class="bd-stats">${stat('Attack', m.atk, top)}${stat('Defense', m.def, top)}${stat('Sp. Atk', m.spa, top)}${stat('Sp. Def', m.spd, top)}${stat('Speed', m.spe, top)}</div>
         <div class="bd-moves">${m.moves.map(mv => `<span class="bd-move" style="--c:${(PP.TYPES || {})[mv.type] || '#888'}"><b>${esc(mv.name)}</b><small>${esc(mv.type)} · ${mv.power || '—'} power</small></span>`).join('')}</div>
+        <div class="bd-extra">
+          <div><span>Friendship</span><b>${(e.friendship || 70) >= 220 ? '♥♥♥ Best friends' : (e.friendship || 70) >= 150 ? '♥♥ Close' : (e.friendship || 70) >= 100 ? '♥ Friendly' : 'Getting to know you'}</b></div>
+          <div><span>Holding</span><b>${e.held ? esc((itemOf(e.held) || { name: e.held }).name) + ` <button class="link" data-do="take-held" data-id="${esc(e.uid)}">Take</button>` : 'Nothing <small>(give items from the Bag)</small>'}</b></div>
+          ${evoTargets(e).map(p => `<div><span>Evolves into ${esc(p.name)}</span><b>${esc(evoHowText(p))}</b></div>`).join('')}
+        </div>
         <p class="muted" style="text-align:left;margin:8px 0 12px">${e.caughtAt ? `From ${esc(e.caughtAt)} · ` : ''}with you ${days} day${days === 1 ? '' : 's'}</p>
         <form class="field" data-form="nick" data-uid="${esc(e.uid)}"><input id="nickInput" maxlength="16" placeholder="Nickname (${esc(sp.name)})" value="${esc(e.nickname)}" autocomplete="off"><button class="btn" type="submit">Save</button></form>
         ${ti !== 0 && save.box.length > 1 ? `<button class="bd-release" data-do="release" data-id="${esc(e.uid)}">Release ${esc(labelOf(e))}</button>` : ''}
@@ -1913,7 +2055,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       }
       case 'act': { const a = data.actions.find(x => x.id === id); if (a) doAction(a); break; }
       case 'sheet': openSheet(b.dataset.kind); break;
-      case 'close': closeSheet(); resetOpen = false; break;
+      case 'close': closeSheet(); resetOpen = false; bagPick = null; break;
       case 'reset-start': resetOpen = true; renderSheet(); setTimeout(() => { const i = $('resetName'); if (i) i.focus(); }, 50); break;
       case 'reset-cancel': resetOpen = false; renderSheet(); break;
       case 'slot': boxSlot = boxSlot === +id ? null : +id; boxDetail = null; renderSheet(); break;
@@ -1925,6 +2067,10 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       case 'team-add': placeInSlot(id, save.team.length); boxDetail = id; renderSheet(); break;
       case 'team-out': teamOut(+id); renderSheet(); break;
       case 'release': release(id); break;
+      case 'bag-on': bagPick = bagPick && bagPick.id === id && bagPick.mode === b.dataset.mode ? null : { id, mode: b.dataset.mode }; renderSheet(); break;
+      case 'bag-pick-cancel': bagPick = null; renderSheet(); break;
+      case 'bag-apply': bagApply(id); break;
+      case 'take-held': takeHeld(id); renderSheet(); break;
       case 'walk-leave': if (walk && !walk.done && confirm('Head back now? You won’t get this trip’s rewards.')) { S.log('explore', `Left ${walk.l.name} early`); endWalk(true); } break;
       case 'walk-close': endWalk(true); break;
       case 'friend': friendView = id || null; tradePicking = false; if (!friendView) closeChat(); renderSheet(); $('sheetBody').scrollTop = 0; break;

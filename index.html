@@ -41,9 +41,9 @@
     if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   </script>
   <title>Pocket Pals</title>
-  <link rel="stylesheet" href="css/base.css?v=50">
-  <link rel="stylesheet" href="css/game.css?v=50">
-  <link rel="stylesheet" href="css/battle.css?v=50">
+  <link rel="stylesheet" href="css/base.css?v=53">
+  <link rel="stylesheet" href="css/game.css?v=53">
+  <link rel="stylesheet" href="css/battle.css?v=53">
 </head>
 <body>
   <div class="app" id="app">
@@ -94,6 +94,7 @@
     </div>
     <div class="toasts" id="toasts" aria-live="polite"></div>
     <div class="walk-layer" id="walkLayer" hidden></div>
+    <div class="evo-layer" id="evoLayer" hidden><canvas class="evo-cv" id="evoCv"></canvas><p class="evo-text" id="evoText"></p></div>
     <div class="battle-layer" id="battleLayer" hidden></div>
 
     <!-- the Professor's welcome and the guided tour -->
@@ -116,22 +117,23 @@
     </div>
   </div>
 
-  <script src="js/icons.js?v=50"></script>
-  <script src="js/update.js?v=50"></script>
-  <script src="js/catalog-items.js?v=50"></script>
-  <script src="js/catalog-pokemon.js?v=50"></script>
-  <script src="js/content-lumera.js?v=50"></script>
-  <script src="js/schema.js?v=50"></script>
-  <script src="js/store.js?v=50"></script>
-  <script src="js/sprite.js?v=50"></script>
-  <script src="js/online/firebase-config.js?v=50"></script>
-  <script src="js/online/cloud.js?v=50"></script>
-  <script src="js/online/social.js?v=50"></script>
-  <script src="js/engine/progression.js?v=50"></script>
-  <script src="js/engine/encounters.js?v=50"></script>
-  <script src="js/audio.js?v=50"></script>
-  <script src="js/battle.js?v=50"></script>
-  <script src="js/engine/story.js?v=50"></script>
-  <script src="js/game.js?v=50"></script>
+  <script src="js/icons.js?v=53"></script>
+  <script src="js/update.js?v=53"></script>
+  <script src="js/catalog-items.js?v=53"></script>
+  <script src="js/catalog-pokemon.js?v=53"></script>
+  <script src="js/catalog-evolution.js?v=53"></script>
+  <script src="js/content-lumera.js?v=53"></script>
+  <script src="js/schema.js?v=53"></script>
+  <script src="js/store.js?v=53"></script>
+  <script src="js/sprite.js?v=53"></script>
+  <script src="js/online/firebase-config.js?v=53"></script>
+  <script src="js/online/cloud.js?v=53"></script>
+  <script src="js/online/social.js?v=53"></script>
+  <script src="js/engine/progression.js?v=53"></script>
+  <script src="js/engine/encounters.js?v=53"></script>
+  <script src="js/audio.js?v=53"></script>
+  <script src="js/battle.js?v=53"></script>
+  <script src="js/engine/story.js?v=53"></script>
+  <script src="js/game.js?v=53"></script>
 </body>
 </html>
