@@ -8,8 +8,19 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
   const fmt = n => Math.floor(n).toLocaleString();
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
+  /** the story is written with “Kai”: show the rival's chosen name instead (only on screen, never saved) */
+  function personalize(d, rival) {
+    const from = (d.settings.rivalDefault || 'Kai').trim(), to = String(rival || '').trim();
+    if (!from || !to || to === from) return d;
+    const re = new RegExp('\\b' + from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g');
+    const swap = v => typeof v === 'string' ? v.replace(re, () => to) : v;
+    const TEXT = ['name', 'title', 'text', 'intro', 'defeat', 'description'];          // shown words only, never ids
+    ['trainers', 'storySteps', 'chapters', 'quests', 'locations'].forEach(k => (d[k] || []).forEach(r => TEXT.forEach(f => { if (f in r) r[f] = swap(r[f]); })));
+    return d;
+  }
   let data = S.loadData();
   let save = S.loadSave(data);
+  data = personalize(data, save.rivalName);
   let sheetKind = null;
   let careOpen = data.settings.careStartOpen;   // is the care menu dropped down?
   function setCare(open) {
@@ -931,6 +942,43 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
       <p class="dlg-err" id="pnameErr"></p>`;
     setTimeout(() => { const i = $('pnameInput'); if (i) i.focus(); }, 60);
   }
+  function askRival(question) {
+    story.gen++;
+    story.mode = 'name'; story.target = 'none'; story.skip = false;
+    showStory(); clearInterval(story.typing); story.typing = null;
+    $('dlgText').textContent = fill(question || 'What is your rival’s name?');
+    $('dlgNext').hidden = true;
+    const def = data.settings.rivalDefault || 'Kai';
+    $('dlgExtra').innerHTML = `<form class="dlg-name" data-form="rname">
+        <input id="rnameInput" maxlength="${data.settings.nameMax}" value="${esc(save.rivalName || def)}" placeholder="${esc(def)}" autocomplete="off" autocapitalize="words" enterkeyhint="done" spellcheck="false">
+        <button class="btn btn-primary" type="submit">Confirm</button></form>
+      <p class="dlg-err" id="rnameErr"></p>`;
+    setTimeout(() => { const i = $('rnameInput'); if (i) { i.focus(); i.select(); } }, 60);
+  }
+  /** a rival name is allowed if it's the right length, made of letters/numbers, and not the player's own name */
+  function rivalWhy(name) {
+    const s = data.settings;
+    if (name.length < 1) return 'Give your rival a name.';
+    if (name.length > s.nameMax) return `Use at most ${s.nameMax} letters.`;
+    if (!/^[\p{L}\p{N}][\p{L}\p{N} _.\-]*$/u.test(name)) return 'Use letters, numbers, spaces, dots, dashes or underscores.';
+    if (name.toLowerCase() === String(save.name).toLowerCase()) return 'That’s your name! Choose a different one for your rival.';
+    return null;
+  }
+  function setRival(name) {
+    const old = save.rivalName;
+    save.rivalName = name; save.rivalNamed = true;
+    data = personalize(S.loadData(), name);
+    S.log('system', old && old !== name && old !== data.settings.rivalDefault ? `Rival renamed: ${old} → ${name}` : `The rival is called ${name}`);
+  }
+  function submitRival(v) {
+    const name = String(v || '').trim().replace(/\s+/g, ' '), why = rivalWhy(name);
+    if (why) { $('rnameErr').textContent = why; return; }
+    setRival(name);
+    commit(); hideStory();
+    // straight on to the starter (onboard() waits for the text box to close, which it doesn't between lines)
+    say([`${name}! That’s right. I’m sure you two will push each other to grow stronger.`].concat(petSpecies() ? [] : linesOf('afterNameLines')),
+      () => { if (!petSpecies()) openSheet('starter'); else { hideStory(); onboard(); } });
+  }
   async function submitName(v) {
     const name = String(v || '').trim().replace(/\s+/g, ' ');
     const why = S.checkName(name, data, null) || await PP.Cloud.claimName(name, null);
@@ -947,6 +995,10 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     if (!save.named) {
       const intro = linesOf('introLines');
       return say(intro.slice(0, -1), () => askName(intro[intro.length - 1]));
+    }
+    if (!save.rivalNamed) {
+      const r = linesOf('rivalLines');
+      return say(r.slice(0, -1), () => askRival(r[r.length - 1]));
     }
     if (!petSpecies()) return say(linesOf('afterNameLines'), () => openSheet('starter'));
     if (!save.tutorialDone) return say(linesOf('afterStarterLines'), () => tour(0));
@@ -1292,6 +1344,9 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         ${SO.on ? `<div class="f-me"><b>${esc(save.name)}</b><span>Your unique player name. Friends find you by it, so it can’t be changed.</span></div>`
           : `<form class="field" data-form="name"><input id="nameInput" maxlength="${data.settings.nameMax}" value="${esc(save.name)}" autocomplete="off" spellcheck="false"><button class="btn btn-primary" type="submit">Save</button></form>
         <p class="field-err" id="nameErr"></p>`}
+        <div class="sec-label">Your rival’s name</div>
+        <form class="field" data-form="rival"><input id="rivalInput" maxlength="${data.settings.nameMax}" value="${esc(save.rivalName)}" autocomplete="off" spellcheck="false"><button class="btn btn-primary" type="submit">Save</button></form>
+        <p class="field-err" id="rivalErr"></p>
         <div class="sec-label">Profile icon</div>
         ${owned.length ? `<div class="icon-grid">${owned.map(p => { const pic = PP.Sprite.portrait(p.folder);
           return `<button class="icon-pick${p.id === icon ? ' on' : ''}" data-do="avatar" data-id="${esc(p.id)}" title="${esc(p.name)}" aria-pressed="${p.id === icon}">${pic ? `<img src="${pic}" alt="">` : I('pokeball')}<span>${esc(p.name)}</span></button>`; }).join('')}</div>
@@ -1710,7 +1765,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     if (!sheetKind || !SHEETS[sheetKind]) return;
     const body = $('sheetBody'), scroll = body.scrollTop;
     const a = document.activeElement;
-    if (a && (a.id === 'nameInput' || a.id === 'petNameInput' || a.id === 'nickInput' || a.id === 'resetName')) return;   // don't wipe what's being typed
+    if (a && (a.id === 'nameInput' || a.id === 'petNameInput' || a.id === 'nickInput' || a.id === 'resetName' || a.id === 'rivalInput')) return;   // don't wipe what's being typed
     if (sheetKind === 'party' && a && (a.id === 'chatInput' || a.id === 'friendSearch')) return;
     if (sheetKind === 'shop' && a && a.id === 'shopSearch' && $('shopGrid')) { refreshShop(); return; }
     const v = SHEETS[sheetKind]();
@@ -1822,6 +1877,13 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
         if (!why) $('nameInput').blur();
       });
     }
+    if (e.target.dataset.form === 'rname') { e.preventDefault(); submitRival($('rnameInput').value); }
+    if (e.target.dataset.form === 'rival') {
+      e.preventDefault();
+      const name = String($('rivalInput').value || '').trim().replace(/\s+/g, ' '), why = rivalWhy(name);
+      $('rivalErr').textContent = why || '';
+      if (!why && name !== save.rivalName) { setRival(name); $('rivalInput').blur(); commit(); toast(`Your rival is now ${name}`); }
+    }
     if (e.target.dataset.form === 'reset') { e.preventDefault(); resetGame($('resetName').value); }
     if (e.target.dataset.form === 'nick') {
       e.preventDefault();
@@ -1875,6 +1937,7 @@ PP.whenReady(function () {   // after sign-in when online (js/online/cloud.js), 
     if (k === 'data' || k === 'all') {
       data = S.loadData();
       save = S.normalizeSave(save, data);
+      data = personalize(data, save.rivalName);
       renderShell();
       PP.Audio.configure(data);
       PP.Audio.play(battleCtx ? battleMusic(battleCtx.trainer) : data.settings.musicHome);

@@ -162,6 +162,7 @@
       story: { done: {}, chapters: {} }, badges: {}, beaten: {},
       daily: { day: '', ids: [] },     // today's daily quests (day key, picked quest ids)
       tradesDone: {},                  // trade id → what this player already did with it (online trades)
+      rivalName: s.rivalDefault || 'Kai', rivalNamed: false,   // the rival's name, chosen in the welcome
       dex: { seen: {}, caught: {} },   // species id → time first seen / caught
       areas: {},                       // area id → { explores, seen: { species: count } }
       createdAt: t, lastTick: t,
@@ -232,6 +233,8 @@
     out.badges = ids(d.badges, raw.badges);
     out.beaten = ids(d.trainers, raw.beaten);
     const rdy = raw.daily && typeof raw.daily === 'object' ? raw.daily : {};
+    out.rivalName = String(raw.rivalName || '').trim().slice(0, 20) || s.rivalDefault || 'Kai';
+    out.rivalNamed = raw.rivalNamed != null ? !!raw.rivalNamed : !!(raw.named && Array.isArray(raw.box) && raw.box.length);   // players from before this keep “Kai”
     out.tradesDone = Object.fromEntries(Object.entries(raw.tradesDone && typeof raw.tradesDone === 'object' ? raw.tradesDone : {}).filter(([k, v]) => typeof v === 'string').slice(-300).map(([k, v]) => [String(k).slice(0, 40), v.slice(0, 12)]));
     out.daily = { day: String(rdy.day || '').slice(0, 10), ids: (Array.isArray(rdy.ids) ? rdy.ids : []).filter(id => d.quests.some(q => q.id === id)) };
     out.lastTown = d.locations.some(l => l.id === raw.lastTown) ? raw.lastTown : '';

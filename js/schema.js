@@ -19,7 +19,7 @@ PP.SCHEMA = {
   version: 1,
   // Bump this when new default rows are added (e.g. a rebuilt item catalogue). Saved game data from
   // an older version gets the new rows merged in; rows the admin already has are left alone.
-  contentVersion: 22,
+  contentVersion: 23,
   // One-time changes to rows of older saved data (e.g. retiring areas that were replaced).
   rowUpdates: [
     { v: 5, collection: 'locations', ids: ['meadow', 'woods', 'hollow'], set: { enabled: false } },
@@ -101,6 +101,8 @@ PP.SCHEMA = {
       { key: 'professorImage', label: 'Professor portrait (dialog box)', type: 'image', preview: 'square', def: 'assets/characters/professor-kou-face.png', max: 300, help: 'A square face picture shown next to everything the Professor says. Empty shows an icon.' },
       { key: 'professorFullImage', label: 'Professor full picture', type: 'image', def: 'assets/characters/professor-kou.png', max: 300, help: 'Shown standing above the text box whenever the Professor talks (the welcome, story scenes). Use a picture with a transparent background. Empty hides it.' },
       { key: 'introLines', label: 'Welcome (before asking the name)', type: 'textarea', max: 1500, def: 'Hello there! Welcome to the world of Pokémon!\nMy name is {professor}. People call me the Pokémon Professor.\nThis world is full of creatures called Pokémon. Some people keep them as pets, others go on adventures with them.\nBut first, tell me a little about yourself. What is your name?' },
+      { key: 'rivalLines', label: 'Meeting the rival (before asking their name)', type: 'textarea', max: 1500, def: 'Oh, before you go… there’s someone you should meet again.\nThis is my other student. You two grew up together right here in Hearthmoor Village.\nThey want to be the strongest trainer in Lumera, just like you!\nNow… what was their name again?', help: 'One line per text box. The last line is the question.' },
+      { key: 'rivalDefault', label: 'Rival’s suggested name', type: 'text', def: 'Kai', max: 20, help: 'Filled in for the player. The story is written with “Kai”; that word is swapped for whatever name the player chooses.' },
       { key: 'afterNameLines', label: 'After the name (before the starter)', type: 'textarea', max: 1500, def: 'So your name is {name}! What a great name.\n{name}, your very own Pokémon adventure is about to begin.\nEvery trainer needs a partner. Choose one of these three Pokémon!' },
       { key: 'afterStarterLines', label: 'After choosing the starter', type: 'textarea', max: 1500, def: '{pokemon}! An excellent choice.\nYou and {pokemon} are going to make a great team. Let me show you around!' },
       { key: 'outroLines', label: 'End of the tutorial', type: 'textarea', max: 1500, def: 'That’s everything you need to know. Take good care of {pokemon}!\nNow go and enjoy your adventure, {name}!' },
